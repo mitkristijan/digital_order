@@ -25,6 +25,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // /testera (tenant root) has no page - redirect to menu to avoid 404 from prefetch
+  if (first === CUSTOMER_TENANT && segments.length === 1) {
+    const url = request.nextUrl.clone();
+    url.pathname = `/${CUSTOMER_TENANT}/menu`;
+    return NextResponse.redirect(url);
+  }
+
   return NextResponse.next();
 }
 

@@ -209,6 +209,7 @@ digital_order/
 - **[Completion Summary](COMPLETION_SUMMARY.md)** - Detailed feature list
 - **[Project Status](PROJECT_STATUS.md)** - Implementation status
 - **[Deployment Guide](docs/DEPLOYMENT.md)** - Production deployment
+- **[Free Tier Deployment](docs/FREE_TIER_DEPLOYMENT.md)** - Demo/testing with Render + Vercel + Supabase + Upstash
 - **[Monitoring Setup](docs/MONITORING.md)** - Observability & alerts
 - **[API Documentation](http://localhost:3000/api/docs)** - Swagger UI (when running)
 
