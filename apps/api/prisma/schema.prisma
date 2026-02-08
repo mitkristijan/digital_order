@@ -1,0 +1,648 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// MULTI-TENANT & USER MANAGEMENT
+// ============================================
+
+model Tenant {
+  id                String   @id @default(uuid())
+  name              String
+  subdomain         String   @unique
+  menuSlug          String?  @unique  // Regeneratable slug for customer menu link; when null, subdomain is used
+  domain            String?  @unique
+  ownerId           String
+  subscriptionTier  String   @default("TRIAL")
+  settings          Json     @default("{}")
+  billingInfo       Json?
+  stripeCustomerId  String?  @unique
+  status            TenantStatus @default(TRIAL)
+  trialEndsAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  owner             User     @relation("TenantOwner", fields: [ownerId], references: [id])
+  categories        Category[]
+  menuItems         MenuItem[]
+  modifierGroups    ModifierGroup[]
+  orders            Order[]
+  payments          Payment[]
+  invoices          Invoice[]
+  tables            Table[]
+  reservations      Reservation[]
+  staff             Staff[]
+  inventoryItems    InventoryItem[]
+  stockMovements    StockMovement[]
+  analyticsEvents   AnalyticsEvent[]
+  tenantAccess      TenantAccess[]
+
+  @@index([subdomain])
+  @@index([menuSlug])
+  @@index([domain])
+  @@index([status])
+}
+
+enum TenantStatus {
+  ACTIVE
+  SUSPENDED
+  TRIAL
+  CANCELLED
+}
+
+model User {
+  id                String   @id @default(uuid())
+  email             String?  @unique
+  phone             String   @unique
+  passwordHash      String?
+  role              UserRole @default(CUSTOMER)
+  firstName         String?
+  lastName          String?
+  avatar            String?
+  isActive          Boolean  @default(true)
+  emailVerified     Boolean  @default(false)
+  phoneVerified     Boolean  @default(false)
+  twoFactorEnabled  Boolean  @default(false)
+  twoFactorSecret   String?
+  lastLoginAt       DateTime?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  // Relations
+  ownedTenants      Tenant[] @relation("TenantOwner")
+  tenantAccess      TenantAccess[]
+  orders            Order[]
+  reservations      Reservation[]
+  staff             Staff[]
+  paymentMethods    SavedPaymentMethod[]
+  refreshTokens     RefreshToken[]
+  otpCodes          OTPCode[]
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+}
+
+enum UserRole {
+  SUPER_ADMIN
+  TENANT_ADMIN
+  KITCHEN
+  WAITER
+  CUSTOMER
+}
+
+model TenantAccess {
+  id        String   @id @default(uuid())
+  userId    String
+  tenantId  String
+  role      UserRole
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user      User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tenantId])
+  @@index([userId])
+  @@index([tenantId])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+}
+
+model OTPCode {
+  id        String   @id @default(uuid())
+  userId    String
+  code      String
+  expiresAt DateTime
+  verified  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // Relations
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code])
+}
+
+// ============================================
+// MENU MANAGEMENT
+// ============================================
+
+model Category {
+  id          String   @id @default(uuid())
+  tenantId    String
+  name        String
+  description String?
+  sortOrder   Int      @default(0)
+  imageUrl    String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant      Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  menuItems   MenuItem[]
+
+  @@index([tenantId])
+  @@index([active])
+  @@index([sortOrder])
+}
+
+model MenuItem {
+  id           String   @id @default(uuid())
+  tenantId     String
+  categoryId   String
+  name         String
+  description  String?
+  basePrice    Decimal  @db.Decimal(10, 2)
+  prepTime     Int      @default(15) // minutes
+  availability Boolean  @default(true)
+  allergens    String[] @default([])
+  dietaryTags  String[] @default([])
+  imageUrl     String?
+  active       Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tenant       Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category     Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  variants     MenuItemVariant[]
+  modifierGroups MenuItemModifierGroup[]
+  orderItems   OrderItem[]
+  recipeItems  RecipeItem[]
+  suggestedItems   MenuItemSuggestedItem[] @relation("SuggestedItems")
+  suggestedFor    MenuItemSuggestedItem[] @relation("SuggestedFor")
+
+  @@index([tenantId])
+  @@index([categoryId])
+  @@index([active])
+  @@index([availability])
+}
+
+model MenuItemSuggestedItem {
+  id                String   @id @default(uuid())
+  menuItemId        String   // The item that shows these suggestions
+  suggestedItemId   String   // The item to suggest when viewing menuItemId
+
+  menuItem      MenuItem @relation("SuggestedItems", fields: [menuItemId], references: [id], onDelete: Cascade)
+  suggestedItem MenuItem @relation("SuggestedFor", fields: [suggestedItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, suggestedItemId])
+  @@index([menuItemId])
+  @@index([suggestedItemId])
+}
+
+model MenuItemVariant {
+  id            String   @id @default(uuid())
+  menuItemId    String
+  name          String
+  priceModifier Decimal  @db.Decimal(10, 2)
+  stockQuantity Int?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  menuItem      MenuItem    @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  orderItems    OrderItem[]
+
+  @@index([menuItemId])
+  @@index([active])
+}
+
+model ModifierGroup {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  minSelection Int      @default(0)
+  maxSelection Int      @default(1)
+  required     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  modifiers    Modifier[]
+  menuItems    MenuItemModifierGroup[]
+
+  @@index([tenantId])
+}
+
+model Modifier {
+  id              String   @id @default(uuid())
+  modifierGroupId String
+  name            String
+  price           Decimal  @db.Decimal(10, 2)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  modifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@index([modifierGroupId])
+  @@index([active])
+}
+
+model MenuItemModifierGroup {
+  id              String   @id @default(uuid())
+  menuItemId      String
+  modifierGroupId String
+
+  // Relations
+  menuItem        MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  modifierGroup   ModifierGroup @relation(fields: [modifierGroupId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, modifierGroupId])
+  @@index([menuItemId])
+  @@index([modifierGroupId])
+}
+
+// ============================================
+// ORDERS
+// ============================================
+
+model Order {
+  id                   String        @id @default(uuid())
+  tenantId             String
+  customerId           String?
+  orderNumber          String        @unique
+  tableNumber          String?
+  status               OrderStatus   @default(PENDING)
+  orderType            OrderType     @default(DINE_IN)
+  subtotal             Decimal       @db.Decimal(10, 2)
+  tax                  Decimal       @db.Decimal(10, 2)
+  tip                  Decimal       @default(0) @db.Decimal(10, 2)
+  deliveryFee          Decimal       @default(0) @db.Decimal(10, 2)
+  total                Decimal       @db.Decimal(10, 2)
+  paymentStatus        PaymentStatus @default(PENDING)
+  paymentMethod        PaymentMethod?
+  specialInstructions  String?
+  customerName         String?
+  customerPhone        String?
+  customerEmail        String?
+  deliveryAddress      String?
+  orderedAt            DateTime      @default(now())
+  confirmedAt          DateTime?
+  preparingAt          DateTime?
+  readyAt              DateTime?
+  deliveredAt          DateTime?
+  completedAt          DateTime?
+  cancelledAt          DateTime?
+  cancellationReason   String?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  // Relations
+  tenant       Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer     User?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items        OrderItem[]
+  payments     Payment[]
+  invoice      Invoice?
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([orderNumber])
+  @@index([status])
+  @@index([orderType])
+  @@index([paymentStatus])
+  @@index([orderedAt])
+}
+
+enum OrderStatus {
+  PENDING
+  PENDING_PAYMENT
+  CONFIRMED
+  PREPARING
+  READY
+  DELIVERED
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderType {
+  DINE_IN
+  TAKEAWAY
+  DELIVERY
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CARD
+  CASH
+  UPI
+  WALLET
+}
+
+model OrderItem {
+  id                  String      @id @default(uuid())
+  orderId             String
+  menuItemId          String
+  variantId           String?
+  quantity            Int
+  unitPrice           Decimal     @db.Decimal(10, 2)
+  modifiers           Json        @default("[]")
+  specialInstructions String?
+  status              OrderStatus @default(PENDING)
+  menuItemName        String
+  variantName         String?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  // Relations
+  order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItem    MenuItem        @relation(fields: [menuItemId], references: [id])
+  variant     MenuItemVariant? @relation(fields: [variantId], references: [id])
+
+  @@index([orderId])
+  @@index([menuItemId])
+  @@index([status])
+}
+
+// ============================================
+// PAYMENTS & INVOICES
+// ============================================
+
+model Payment {
+  id                    String        @id @default(uuid())
+  orderId               String
+  tenantId              String
+  amount                Decimal       @db.Decimal(10, 2)
+  currency              String        @default("USD")
+  status                PaymentStatus @default(PENDING)
+  paymentMethod         PaymentMethod
+  providerTransactionId String?
+  metadata              Json          @default("{}")
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  // Relations
+  order   Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tenant  Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+model Invoice {
+  id           String        @id @default(uuid())
+  orderId      String        @unique
+  tenantId     String
+  invoiceNumber String       @unique
+  date         DateTime      @default(now())
+  dueDate      DateTime?
+  subtotal     Decimal       @db.Decimal(10, 2)
+  taxBreakdown Json          @default("[]")
+  total        Decimal       @db.Decimal(10, 2)
+  status       InvoiceStatus @default(DRAFT)
+  pdfUrl       String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  // Relations
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([invoiceNumber])
+  @@index([status])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  VOID
+  OVERDUE
+}
+
+model SavedPaymentMethod {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String
+  provider  String
+  token     String
+  last4     String
+  expiry    String?
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+// ============================================
+// TABLES & RESERVATIONS
+// ============================================
+
+model Table {
+  id           String      @id @default(uuid())
+  tenantId     String
+  tableNumber  String
+  capacity     Int
+  location     String?
+  qrCode       String      @unique
+  status       TableStatus @default(AVAILABLE)
+  currentOrderId String?   @unique
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  // Relations
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  reservations Reservation[]
+
+  @@unique([tenantId, tableNumber])
+  @@index([tenantId])
+  @@index([status])
+}
+
+enum TableStatus {
+  AVAILABLE
+  OCCUPIED
+  RESERVED
+}
+
+model Reservation {
+  id             String            @id @default(uuid())
+  tenantId       String
+  customerId     String?
+  tableId        String?
+  customerName   String
+  customerPhone  String
+  customerEmail  String?
+  dateTime       DateTime
+  partySize      Int
+  status         ReservationStatus @default(PENDING)
+  specialRequests String?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  // Relations
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customer User?  @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  table    Table? @relation(fields: [tableId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([customerId])
+  @@index([tableId])
+  @@index([status])
+  @@index([dateTime])
+}
+
+enum ReservationStatus {
+  PENDING
+  CONFIRMED
+  SEATED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ============================================
+// STAFF
+// ============================================
+
+model Staff {
+  id         String   @id @default(uuid())
+  tenantId   String
+  userId     String
+  position   String
+  hourlyRate Decimal? @db.Decimal(10, 2)
+  schedule   Json     @default("{}")
+  active     Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, userId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([active])
+}
+
+// ============================================
+// INVENTORY
+// ============================================
+
+model InventoryItem {
+  id           String   @id @default(uuid())
+  tenantId     String
+  name         String
+  unit         String
+  currentStock Decimal  @db.Decimal(10, 2)
+  minStock     Decimal  @db.Decimal(10, 2)
+  maxStock     Decimal  @db.Decimal(10, 2)
+  supplier     String?
+  costPerUnit  Decimal  @db.Decimal(10, 2)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  tenant         Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  recipeItems    RecipeItem[]
+  stockMovements StockMovement[]
+
+  @@index([tenantId])
+  @@index([currentStock])
+}
+
+model RecipeItem {
+  id               String   @id @default(uuid())
+  menuItemId       String
+  inventoryItemId  String
+  quantityRequired Decimal  @db.Decimal(10, 2)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  menuItem      MenuItem      @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@unique([menuItemId, inventoryItemId])
+  @@index([menuItemId])
+  @@index([inventoryItemId])
+}
+
+model StockMovement {
+  id              String            @id @default(uuid())
+  tenantId        String
+  inventoryItemId String
+  type            StockMovementType
+  quantity        Decimal           @db.Decimal(10, 2)
+  referenceId     String?
+  notes           String?
+  createdBy       String
+  createdAt       DateTime          @default(now())
+
+  // Relations
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventoryItem InventoryItem @relation(fields: [inventoryItemId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([inventoryItemId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+enum StockMovementType {
+  IN
+  OUT
+  ADJUSTMENT
+}
+
+// ============================================
+// ANALYTICS
+// ============================================
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  tenantId  String
+  eventType String
+  entityId  String?
+  metadata  Json     @default("{}")
+  timestamp DateTime @default(now())
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([eventType])
+  @@index([timestamp])
+}
