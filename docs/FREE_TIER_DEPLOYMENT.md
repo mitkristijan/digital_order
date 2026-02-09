@@ -154,10 +154,10 @@ Deploy each app as a **separate Vercel project**.
 
 ## Step 5: Update CORS on Render
 
-After all frontends are deployed, add their URLs to CORS in Render:
+After all frontends are deployed, add your **production** frontend URLs to CORS in Render (Vercel **preview** URLs like `*-xxx-*.vercel.app` are allowed automatically):
 
 1. Render Dashboard → Your API → Environment
-2. Set `CORS_ORIGIN`:
+2. Set `CORS_ORIGIN` (comma-separated, no spaces):
    ```
    https://digital-order-customer.vercel.app,https://digital-order-admin.vercel.app,https://digital-order-kitchen.vercel.app
    ```
@@ -264,13 +264,21 @@ cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
    - Set for **Production** and **Preview** in Settings → Environment Variables
    - Redeploy after changing env vars (Next.js bakes them at build time).
 
-3. **CORS** — Add your Vercel URLs to `CORS_ORIGIN` on Render, e.g.:
+3. **CORS** — Add your Vercel production URLs to `CORS_ORIGIN` on Render, e.g.:
    ```
-   https://digital-order-admin.vercel.app,https://digital-order-customer.vercel.app
+   https://digital-order-admin.vercel.app,https://digital-order-customer.vercel.app,https://digital-order-kitchen.vercel.app
    ```
-   Or leave empty to allow all origins (including `*.vercel.app`).
+   **Vercel preview URLs** (e.g. `https://digital-order-admin-xxx-mitrovics-projects.vercel.app`) are allowed automatically by the API — no need to list them. If you see CORS errors from a preview URL, redeploy the API on Render so it uses the latest CORS logic.
 
 4. **Verify** — Open DevTools → Network tab, then visit the menu page. Check if requests to your Render API are sent and whether they succeed or fail.
+
+### CORS: "No 'Access-Control-Allow-Origin' header" (e.g. on /api/auth/register)
+
+1. **Vercel preview URLs** — The API allows any origin whose host contains `.vercel.app` (production and preview). Ensure the API on Render has been **redeployed** after the latest code so this behavior is active.
+
+2. **Cold start** — On Render free tier, the first request after idle can be an OPTIONS preflight; if the service is still waking up, the response may not include CORS headers. **Retry once** after 30–60 seconds; the next request should succeed.
+
+3. **Render env** — Set `CORS_ORIGIN` to your production Vercel URLs (comma-separated). Preview URLs do not need to be listed.
 
 ## Free Tier Limitations
 

@@ -8,17 +8,23 @@ import helmet from 'helmet';
 import compression from 'compression';
 import * as express from 'express';
 
-function getCorsOrigin(): (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void {
-  const allowed = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) || [];
-  const allowAllForDemo = allowed.length === 0;
+const CORS_ALLOWED_HEADERS = ['Content-Type', 'Authorization', 'Accept'];
+const CORS_METHODS = 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS';
 
+function isOriginAllowed(origin: string | undefined): boolean {
+  if (!origin) return true;
+  const allowed = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) || [];
+  if (allowed.length === 0) return true;
+  if (allowed.includes(origin)) return true;
+  // Vercel production and preview URLs (e.g. ...-xxx-team.vercel.app)
+  if (origin.includes('.vercel.app')) return true;
+  if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
+  return false;
+}
+
+function getCorsOrigin(): (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void {
   return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    if (!origin) return callback(null, true);
-    if (allowAllForDemo) return callback(null, true);
-    if (allowed.includes(origin)) return callback(null, true);
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
-    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return callback(null, true);
-    callback(null, false);
+    callback(null, isOriginAllowed(origin));
   };
 }
 
@@ -27,12 +33,26 @@ async function bootstrap() {
     cors: {
       origin: getCorsOrigin(),
       credentials: true,
-      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
-      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+      allowedHeaders: CORS_ALLOWED_HEADERS,
+      methods: CORS_METHODS.split(','),
       optionsSuccessStatus: 204,
     },
     bodyParser: true,
     rawBody: true,
+  });
+
+  // Handle CORS preflight early so OPTIONS always get correct headers (e.g. from Vercel preview)
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    const origin = req.get('Origin');
+    if (req.method === 'OPTIONS' && origin && isOriginAllowed(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Methods', CORS_METHODS);
+      res.setHeader('Access-Control-Allow-Headers', CORS_ALLOWED_HEADERS.join(','));
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Max-Age', '86400');
+      return res.status(204).end();
+    }
+    next();
   });
 
   // Increase body size limit for image uploads (50MB)
