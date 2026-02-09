@@ -1,25 +1,47 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 
+/** Options for Upstash (rediss://) - unlimited retries, TLS, handles ECONNRESET */
+function getRedisOptions(): object {
+  const url = process.env.REDIS_URL || 'redis://localhost:6379';
+  const isUpstash = url.startsWith('rediss://');
+
+  const base = {
+    maxRetriesPerRequest: null as number | null, // null = unlimited retries (Upstash)
+    enableOfflineQueue: true,
+    retryStrategy: (times: number) => Math.min(times * 100, 3000),
+    ...(isUpstash && { tls: {} }),
+  };
+
+  if (url.startsWith('redis')) {
+    return { ...base, url };
+  }
+  return {
+    ...base,
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT || '6379', 10),
+  };
+}
+
 @Injectable()
 export class RedisService implements OnModuleInit {
   private client: Redis;
 
   async onModuleInit() {
-    this.client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      maxRetriesPerRequest: 3,
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000);
-        return delay;
-      },
-    });
+    const url = process.env.REDIS_URL || 'redis://localhost:6379';
+    const options = getRedisOptions();
+    this.client = new Redis(options as object);
 
+    let connectedOnce = false;
     this.client.on('error', (err) => {
       console.error('Redis Client Error', err);
     });
 
     this.client.on('connect', () => {
-      console.log('✅ Redis connected');
+      if (!connectedOnce) {
+        console.log('✅ Redis connected');
+        connectedOnce = true;
+      }
     });
   }
 

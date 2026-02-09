@@ -380,7 +380,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
               {categoryDropdownOpen && (
                 <div className="absolute z-50 mt-1 w-full rounded-md border border-gray-200 bg-white shadow-lg">
                   <div className="max-h-48 overflow-auto py-1">
-                    {categoryOptions.map((opt) => (
+                    {categoryOptions.map((opt: { value: string; label: string }) => (
                       <button
                         key={opt.value}
                         type="button"

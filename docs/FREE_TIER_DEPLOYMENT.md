@@ -20,21 +20,20 @@ Deploy Digital Order for **demo and testing** using 100% free services. When rea
 3. Set a strong database password (save it!)
 4. Wait for project to provision (~2 min)
 
-5. **Get connection string:**
+5. **Get connection string** — **Use Session pooler (required for Render):**
    - Project Settings → Database
    - Under "Connection string", select **URI**
-   - Copy the connection string
-   - **Important:** Add `?pgbouncer=true` if using the pooler URL (port 6543)
+   - Choose **Session** mode (NOT Direct — Render doesn't support IPv6, Supabase direct uses IPv6)
+   - Copy the connection string (format: `aws-0-[region].pooler.supabase.com:5432`)
 
-You need **two** connection strings:
-- **DATABASE_URL** (pooler, port 6543): For app runtime — add `?pgbouncer=true`
-- **DIRECT_URL** (direct, port 5432): For migrations — no pgbouncer
+**Use the SAME Session pooler URL for both variables** (Render needs IPv4-compatible pooler):
 
-Example format:
 ```
-DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:6543/postgres?pgbouncer=true
-DIRECT_URL=postgresql://postgres.[ref]:[password]@db.[ref].supabase.co:5432/postgres
+DATABASE_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres
+DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.supabase.com:5432/postgres
 ```
+
+> **Important:** Do NOT use `db.[ref].supabase.co` (direct connection) — it uses IPv6 and fails from Render. Always use `aws-0-[region].pooler.supabase.com:5432` (Session pooler).
 
 ## Step 2: Upstash (Redis)
 
@@ -196,16 +195,26 @@ Customer: customer@demo.com / Customer@123
 
 ### P1001: Can't reach database server (Supabase)
 
-If migrations fail with "Can't reach database server":
+Render **does not support IPv6**. Supabase's direct connection (`db.[ref].supabase.co`) uses IPv6 and will fail.
 
-1. **Supabase bans IPs after failed attempts** — Supabase Fail2ban blocks IPs after 2 wrong passwords. Check Supabase Dashboard → Database Settings → **Banned IPs** and unban if needed. Bans clear after ~30 min.
+**Fix:** Use the **Session pooler** for BOTH DATABASE_URL and DIRECT_URL:
+```
+postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+```
 
-2. **Use Session pooler for Render** — The direct connection (port 5432) can be blocked. Try the **Session** pooler instead of Direct:
-   - Supabase → Project Settings → Database
-   - Session pooler: `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres`
-   - Use this for **both** DATABASE_URL and DIRECT_URL if migrations fail with direct.
+Get it from: Supabase Dashboard → Project Settings → Database → Connection string → **Session** mode.
 
-3. **Verify password** — No spaces, special chars properly URL-encoded in the connection string.
+Also check:
+- **Banned IPs** — Supabase bans after 2 wrong passwords. Check Database Settings → Banned IPs → Unban.
+- **Password** — No spaces, special chars URL-encoded (e.g. `@` → `%40`).
+
+### Redis ECONNRESET / MaxRetriesPerRequestError (Upstash)
+
+The app is configured for Upstash resilience: unlimited retries, `enableOfflineQueue`, and explicit TLS for `rediss://` URLs. If you still see connection errors:
+
+- Verify `REDIS_URL` starts with `rediss://` (double s for TLS)
+- Check Upstash Dashboard → your database is active
+- Free tier: 10K connections, 500K commands/month
 
 ### Cannot find module dist/main.js
 

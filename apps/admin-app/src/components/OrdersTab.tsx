@@ -98,7 +98,7 @@ export function OrdersTab({ tenantId }: OrdersTabProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const { data, isLoading } = useOrders(tenantId, { take: 500 });
-  const allOrders = (data?.orders ?? []) as Order[];
+  const allOrders = ((data as { orders?: Order[] })?.orders ?? []) as Order[];
   const orders = useMemo(() => filterOrdersByPeriod(allOrders, period), [allOrders, period]);
 
   const toggleSelect = useCallback((id: string) => {

@@ -34,7 +34,7 @@ export default function DashboardPage() {
     );
   }
 
-  const orders = data?.orders || [];
+  const orders = (data as { orders?: unknown[] } | undefined)?.orders ?? [];
   const newOrders = orders.filter((o: any) => ['PENDING', 'PENDING_PAYMENT'].includes(o.status));
   const preparingOrders = orders.filter((o: any) => ['CONFIRMED', 'PREPARING'].includes(o.status));
   const readyOrders = orders.filter((o: any) => o.status === 'READY');

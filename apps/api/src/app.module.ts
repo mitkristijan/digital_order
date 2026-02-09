@@ -36,12 +36,17 @@ import { TenantGuard } from './common/guards/tenant.guard';
     ]),
     ScheduleModule.forRoot(),
     BullModule.forRoot({
-      redis: process.env.REDIS_URL
-        ? process.env.REDIS_URL
-        : {
-            host: process.env.REDIS_HOST || 'localhost',
-            port: parseInt(process.env.REDIS_PORT || '6379', 10),
-          },
+      redis: (() => {
+        const url = process.env.REDIS_URL;
+        const isUpstash = url?.startsWith('rediss://');
+        const opts = {
+          maxRetriesPerRequest: null,
+          enableOfflineQueue: true,
+          retryStrategy: (times: number) => Math.min(times * 100, 3000),
+          ...(isUpstash && { tls: {} }),
+        };
+        return url ? { ...opts, url } : { ...opts, host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT || '6379', 10) };
+      })(),
     }),
     PrismaModule,
     RedisModule,
