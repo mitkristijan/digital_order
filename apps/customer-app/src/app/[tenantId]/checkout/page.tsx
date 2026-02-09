@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { useCartStore } from '@/store/cartStore';
 import { useActiveOrderStore } from '@/store/activeOrderStore';
 import { useCreateOrder } from '@/hooks/useOrder';
+import { OrderType } from '@digital-order/types';
 import { useMenu } from '@/hooks/useMenu';
 import { Input, Textarea, Spinner } from '@digital-order/ui';
 import { OrderSuccess } from '@/components/OrderSuccess';
@@ -46,7 +47,7 @@ export default function CheckoutPage() {
 
     try {
       const orderData = {
-        orderType: 'DINE_IN' as const,
+        orderType: OrderType.DINE_IN,
         tableNumber: tableNumber || undefined,
         customerName: customerName || 'Guest',
         specialInstructions: specialRequests || undefined,
