@@ -6,12 +6,12 @@ Deploy Digital Order for **demo and testing** using 100% free services. When rea
 
 ## Free Services Used
 
-| Service | Purpose | Free Tier | URL Format |
-|---------|---------|-----------|------------|
-| **Render** | API (NestJS) | 750 hrs/mo, spins down after 15 min | `*.onrender.com` |
-| **Vercel** | 3 Frontend apps | Hobby plan | `*.vercel.app` |
-| **Supabase** | PostgreSQL | 500MB, 1GB storage | - |
-| **Upstash** | Redis | 256MB, 500K commands/mo | - |
+| Service      | Purpose         | Free Tier                           | URL Format       |
+| ------------ | --------------- | ----------------------------------- | ---------------- |
+| **Render**   | API (NestJS)    | 750 hrs/mo, spins down after 15 min | `*.onrender.com` |
+| **Vercel**   | 3 Frontend apps | Hobby plan                          | `*.vercel.app`   |
+| **Supabase** | PostgreSQL      | 500MB, 1GB storage                  | -                |
+| **Upstash**  | Redis           | 256MB, 500K commands/mo             | -                |
 
 ## Step 1: Supabase (Database)
 
@@ -53,54 +53,67 @@ DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.sup
 3. Connect your GitHub/GitLab repo
 4. Configure:
 
-   | Setting | Value |
-   |--------|-------|
-   | **Name** | `digital-order` (or `digital-order-api`) — URL will be `*.onrender.com` |
-   | **Region** | Oregon (or closest) |
-   | **Branch** | `main` |
-   | **Root Directory** | *(leave empty)* |
-   | **Runtime** | Node |
-   | **Build Command** | See below |
-   | **Start Command** | See below |
-   | **Instance Type** | Free |
+   | Setting            | Value                                                                   |
+   | ------------------ | ----------------------------------------------------------------------- |
+   | **Name**           | `digital-order` (or `digital-order-api`) — URL will be `*.onrender.com` |
+   | **Region**         | Oregon (or closest)                                                     |
+   | **Branch**         | `main`                                                                  |
+   | **Root Directory** | _(leave empty)_                                                         |
+   | **Runtime**        | Node                                                                    |
+   | **Build Command**  | See below                                                               |
+   | **Start Command**  | See below                                                               |
+   | **Instance Type**  | Free                                                                    |
 
    **Build Command:**
+
    ```bash
    npm install --include=dev && npm run build --workspace=@digital-order/types && npm run build --workspace=@digital-order/utils && npm run build --workspace=@digital-order/config && cd apps/api && npx prisma generate && npm run build
    ```
-   
+
    > **Important:** `--include=dev` is required because Render sets NODE_ENV=production, which skips devDependencies. The NestJS CLI (`@nestjs/cli`) is needed for the build.
 
    **Start Command:**
+
    ```bash
    cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
    ```
 
 5. **Environment Variables** (Render Dashboard → Environment):
 
-   | Key | Value |
-   |----|-------|
-   | `DATABASE_URL` | From Supabase - pooler URL (port 6543) |
-   | `DIRECT_URL` | From Supabase - direct URL (port 5432) for migrations |
-   | `REDIS_URL` | From Upstash (Step 2) |
-   | `JWT_SECRET` | `openssl rand -base64 32` |
-   | `JWT_REFRESH_SECRET` | `openssl rand -base64 32` |
-   | `NODE_ENV` | `production` |
-   | `CORS_ORIGIN` | Comma-separated: `https://your-admin.vercel.app,https://your-customer.vercel.app,https://your-kitchen.vercel.app` — `*.vercel.app` preview URLs are allowed automatically |
-   | `FRONTEND_URL` | *(Add after deploying frontends)* |
-   | `ADMIN_URL` | *(Add after deploying frontends)* |
-   | `API_URL` | `https://YOUR-SERVICE-NAME.onrender.com` (match your Render service name) |
+   | Key                  | Value                                                                                                                                                                     |
+   | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+   | `DATABASE_URL`       | From Supabase - pooler URL (port 6543)                                                                                                                                    |
+   | `DIRECT_URL`         | From Supabase - direct URL (port 5432) for migrations                                                                                                                     |
+   | `REDIS_URL`          | From Upstash (Step 2)                                                                                                                                                     |
+   | `JWT_SECRET`         | `openssl rand -base64 32`                                                                                                                                                 |
+   | `JWT_REFRESH_SECRET` | `openssl rand -base64 32`                                                                                                                                                 |
+   | `NODE_ENV`           | `production`                                                                                                                                                              |
+   | `CORS_ORIGIN`        | Comma-separated: `https://your-admin.vercel.app,https://your-customer.vercel.app,https://your-kitchen.vercel.app` — `*.vercel.app` preview URLs are allowed automatically |
+   | `FRONTEND_URL`       | _(Add after deploying frontends)_                                                                                                                                         |
+   | `ADMIN_URL`          | _(Add after deploying frontends)_                                                                                                                                         |
+   | `API_URL`            | `https://YOUR-SERVICE-NAME.onrender.com` (match your Render service name)                                                                                                 |
 
 6. **Deploy** → Wait for build (~5–10 min)
 
 7. **Note your API URL:** `https://YOUR-SERVICE-NAME.onrender.com` (e.g. `digital-order.onrender.com`)
 
-8. **Seed the database** (one-time):
+8. **Run migrations and seed** (one-time, from your machine):
+
+   Migrations must be applied before the app works. Run locally with your Supabase URLs:
+
    ```bash
    cd apps/api
-   DATABASE_URL="your-supabase-url" npx prisma migrate deploy
-   DATABASE_URL="your-supabase-url" npx prisma db seed
+
+   # Apply migrations (creates User, Tenant, Order, etc. tables)
+   DIRECT_URL="postgresql://postgres.[ref]:[password]@db.[ref].supabase.co:5432/postgres" \
+   DATABASE_URL="postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres" \
+   npx prisma migrate deploy
+
+   # Seed demo data (optional)
+   DIRECT_URL="..." DATABASE_URL="..." npx prisma db seed
    ```
+
+   > **Critical:** If you see "table User does not exist", migrations were never applied. Run the commands above with your Supabase credentials.
 
 ## Step 4: Vercel (Frontend Apps)
 
@@ -120,7 +133,7 @@ Deploy each app as a **separate Vercel project**.
    |----|-------|
    | `NEXT_PUBLIC_API_URL` | `https://YOUR-SERVICE.onrender.com/api` (must match your Render URL) |
    | `NEXT_PUBLIC_SOCKET_URL` | `https://YOUR-SERVICE.onrender.com` |
-   
+
    > **Important:** Set these for **Production** and **Preview** environments in Vercel (Settings → Environment Variables → check both).
 
 5. **Deploy**
@@ -177,12 +190,12 @@ DATABASE_URL="postgresql://..." npx prisma studio
 
 ## Your Free URLs
 
-| App | URL |
-|-----|-----|
-| **Customer** | `https://digital-order-customer.vercel.app` |
-| **Admin** | `https://digital-order-admin.vercel.app` |
-| **Kitchen** | `https://digital-order-kitchen.vercel.app` |
-| **API** | `https://YOUR-SERVICE.onrender.com` |
+| App          | URL                                          |
+| ------------ | -------------------------------------------- |
+| **Customer** | `https://digital-order-customer.vercel.app`  |
+| **Admin**    | `https://digital-order-admin.vercel.app`     |
+| **Kitchen**  | `https://digital-order-kitchen.vercel.app`   |
+| **API**      | `https://YOUR-SERVICE.onrender.com`          |
 | **API Docs** | `https://YOUR-SERVICE.onrender.com/api/docs` |
 
 ## Default Login Credentials
@@ -201,19 +214,20 @@ Customer: customer@demo.com / Customer@123
 
 2. **Optional:** Add `DEBUG_ERRORS=true` in Render Environment to include stack trace in the response.
 
-4. **Common causes:**
-   - **Migrations not run** — Run `npx prisma migrate deploy` (or ensure migrations run in Render start command).
+3. **Common causes:**
+   - **"table User does not exist"** — Migrations were never applied. Run `npx prisma migrate deploy` **locally** with your Supabase `DATABASE_URL` and `DIRECT_URL` (see Step 8 above). Supabase needs the direct connection for migrations.
    - **Database not seeded** — Run `npx prisma db seed` locally with your Supabase `DATABASE_URL`.
    - **Missing JWT_SECRET / JWT_REFRESH_SECRET** — Set both in Render Environment.
    - **Prisma schema mismatch** — Ensure all migrations are applied to Supabase.
 
-5. **Verify in Render** — Environment variables: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `REDIS_URL`.
+4. **Verify in Render** — Environment variables: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `REDIS_URL`.
 
 ### P1001: Can't reach database server (Supabase)
 
 Render **does not support IPv6**. Supabase's direct connection (`db.[ref].supabase.co`) uses IPv6 and will fail.
 
 **Fix:** Use the **Session pooler** for BOTH DATABASE_URL and DIRECT_URL:
+
 ```
 postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
 ```
@@ -221,6 +235,7 @@ postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/p
 Get it from: Supabase Dashboard → Project Settings → Database → Connection string → **Session** mode.
 
 Also check:
+
 - **Banned IPs** — Supabase bans after 2 wrong passwords. Check Database Settings → Banned IPs → Unban.
 - **Password** — No spaces, special chars URL-encoded (e.g. `@` → `%40`).
 
@@ -240,14 +255,31 @@ The NestJS monorepo build outputs to `dist/apps/api/src/main.js`. Use this start
 cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
 ```
 
+### Admin menu shows loader forever / never loads data
+
+1. **Render cold start** — First request after 15 min idle can take 30–60 seconds. Wait up to 60 seconds; the app now retries with backoff.
+
+2. **Wrong API URL in Vercel** — Ensure each Vercel project has:
+   - `NEXT_PUBLIC_API_URL` = `https://YOUR-SERVICE.onrender.com/api` (include `/api`)
+   - Set for **Production** and **Preview** in Settings → Environment Variables
+   - Redeploy after changing env vars (Next.js bakes them at build time).
+
+3. **CORS** — Add your Vercel URLs to `CORS_ORIGIN` on Render, e.g.:
+   ```
+   https://digital-order-admin.vercel.app,https://digital-order-customer.vercel.app
+   ```
+   Or leave empty to allow all origins (including `*.vercel.app`).
+
+4. **Verify** — Open DevTools → Network tab, then visit the menu page. Check if requests to your Render API are sent and whether they succeed or fail.
+
 ## Free Tier Limitations
 
-| Limitation | Impact |
-|------------|--------|
+| Limitation           | Impact                                                      |
+| -------------------- | ----------------------------------------------------------- |
 | **Render spin-down** | API sleeps after 15 min idle; first request may take 30–60s |
-| **Vercel bandwidth** | 100GB/mo on Hobby |
-| **Supabase** | 500MB DB, 1GB storage |
-| **Upstash** | 500K commands/month |
+| **Vercel bandwidth** | 100GB/mo on Hobby                                           |
+| **Supabase**         | 500MB DB, 1GB storage                                       |
+| **Upstash**          | 500K commands/month                                         |
 
 ## Switching to Paid (Production)
 
@@ -265,7 +297,6 @@ When ready for production:
 - **Vercel:** Add domain in Project Settings → Domains (free SSL)
 - **Render:** Add custom domain in Service Settings (free SSL)
 - Free subdomains: `*.vercel.app` and `*.onrender.com` work out of the box
-
 
 admin panel - vercel: https://digital-order-admin-rnf4h68pc-mitrovics-projects.vercel.app/
 customer app - vercel: https://digital-order-customer-app.vercel.app/

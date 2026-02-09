@@ -15,6 +15,9 @@ export function useMenuItems(tenantId: string | null) {
     staleTime: 0, // Always treat data as stale
     refetchOnMount: true,
     refetchOnWindowFocus: true,
+    // Retry on transient failures (Render cold start, network)
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
 
@@ -27,6 +30,8 @@ export function useCategories(tenantId: string | null) {
       return data;
     },
     enabled: !!tenantId,
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
 

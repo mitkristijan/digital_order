@@ -26,13 +26,19 @@ export default function MenuManagementPage() {
         <div className="text-center">
           <Spinner size="lg" />
           <p className="mt-4 text-slate-600">Loading menu items...</p>
+          <p className="mt-2 text-slate-500 text-sm">
+            First load may take up to 60 seconds on free-tier hosting.
+          </p>
         </div>
       </div>
     );
   }
 
   if (error) {
-    const is404 = (error as any)?.response?.status === 404;
+    const err = error as any;
+    const is404 = err?.response?.status === 404;
+    const isNetwork = err?.code === 'ECONNABORTED' || err?.message === 'Network Error' || !err?.response;
+    const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') : 'API URL';
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center max-w-md p-8 bg-white rounded-xl shadow-lg border border-slate-200">
@@ -45,11 +51,20 @@ export default function MenuManagementPage() {
           <p className="text-slate-600 text-sm mb-4">
             {is404
               ? `Tenant "${tenantId}" was not found. Run the database seed to create it.`
-              : 'Could not connect to the API. Ensure the API is running on port 3000.'}
+              : isNetwork
+                ? `Could not connect to the API. In production, ensure Vercel has NEXT_PUBLIC_API_URL set to your Render API URL (e.g. https://your-api.onrender.com/api).`
+                : err?.response?.data?.message || 'Could not connect to the API.'}
           </p>
-          <p className="text-slate-500 text-xs mb-4">
-            From the project root: <code className="bg-slate-100 px-1 rounded">cd apps/api && npx prisma db seed</code>
-          </p>
+          {isNetwork && (
+            <p className="text-slate-500 text-xs mb-4">
+              Current API URL: <code className="bg-slate-100 px-1 rounded break-all">{apiUrl}</code>
+            </p>
+          )}
+          {is404 && (
+            <p className="text-slate-500 text-xs mb-4">
+              From the project root: <code className="bg-slate-100 px-1 rounded">cd apps/api && npx prisma db seed</code>
+            </p>
+          )}
         </div>
       </div>
     );
