@@ -86,7 +86,7 @@ DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.sup
    | `JWT_SECRET` | `openssl rand -base64 32` |
    | `JWT_REFRESH_SECRET` | `openssl rand -base64 32` |
    | `NODE_ENV` | `production` |
-   | `CORS_ORIGIN` | *(Add after deploying frontends)* |
+   | `CORS_ORIGIN` | Comma-separated: `https://your-admin.vercel.app,https://your-customer.vercel.app,https://your-kitchen.vercel.app` — `*.vercel.app` preview URLs are allowed automatically |
    | `FRONTEND_URL` | *(Add after deploying frontends)* |
    | `ADMIN_URL` | *(Add after deploying frontends)* |
    | `API_URL` | `https://digital-order-api.onrender.com` |

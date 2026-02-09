@@ -7,11 +7,28 @@ import helmet from 'helmet';
 import compression from 'compression';
 import * as express from 'express';
 
+function getCorsOrigin(): (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void {
+  const allowed = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) || [];
+  const allowAllForDemo = allowed.length === 0;
+
+  return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin) return callback(null, true);
+    if (allowAllForDemo) return callback(null, true);
+    if (allowed.includes(origin)) return callback(null, true);
+    if (origin.endsWith('.vercel.app')) return callback(null, true);
+    if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return callback(null, true);
+    callback(null, false);
+  };
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     cors: {
-      origin: process.env.CORS_ORIGIN?.split(',') || '*',
+      origin: getCorsOrigin(),
       credentials: true,
+      allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+      optionsSuccessStatus: 204,
     },
     bodyParser: true,
     rawBody: true,
