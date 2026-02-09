@@ -30,14 +30,14 @@ export class AnalyticsService {
         { status: OrderStatus.COMPLETED, completedAt: { gte: start, lte: end } },
         { status: OrderStatus.DELIVERED, deliveredAt: { gte: start, lte: end } },
       ],
-    } as const;
+    };
     const soldYesterdayWhere = {
       tenantId,
       OR: [
         { status: OrderStatus.COMPLETED, completedAt: { gte: yesterdayStart, lte: yesterdayEnd } },
         { status: OrderStatus.DELIVERED, deliveredAt: { gte: yesterdayStart, lte: yesterdayEnd } },
       ],
-    } as const;
+    };
     const completedStatuses: OrderStatus[] = [OrderStatus.DELIVERED, OrderStatus.COMPLETED, OrderStatus.READY];
 
     const [

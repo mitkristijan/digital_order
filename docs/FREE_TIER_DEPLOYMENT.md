@@ -67,8 +67,10 @@ DIRECT_URL=postgresql://postgres.[ref]:[password]@db.[ref].supabase.co:5432/post
 
    **Build Command:**
    ```bash
-   npm install && npm run build --workspace=@digital-order/types && npm run build --workspace=@digital-order/utils && npm run build --workspace=@digital-order/config && cd apps/api && npx prisma generate && npm run build
+   npm install --include=dev && npm run build --workspace=@digital-order/types && npm run build --workspace=@digital-order/utils && npm run build --workspace=@digital-order/config && cd apps/api && npx prisma generate && npm run build
    ```
+   
+   > **Important:** `--include=dev` is required because Render sets NODE_ENV=production, which skips devDependencies. The NestJS CLI (`@nestjs/cli`) is needed for the build.
 
    **Start Command:**
    ```bash

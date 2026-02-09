@@ -8,8 +8,9 @@ services:
     runtime: node
 
     # Build from monorepo root
+    # Use --include=dev so @nestjs/cli is installed (Render skips devDeps when NODE_ENV=production)
     buildCommand: |
-      npm install
+      npm install --include=dev
       npm run build --workspace=@digital-order/types
       npm run build --workspace=@digital-order/utils
       npm run build --workspace=@digital-order/config
