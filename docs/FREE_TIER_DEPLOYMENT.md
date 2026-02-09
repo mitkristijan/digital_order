@@ -55,7 +55,7 @@ DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.sup
 
    | Setting | Value |
    |--------|-------|
-   | **Name** | `digital-order-api` |
+   | **Name** | `digital-order` (or `digital-order-api`) — URL will be `*.onrender.com` |
    | **Region** | Oregon (or closest) |
    | **Branch** | `main` |
    | **Root Directory** | *(leave empty)* |
@@ -89,11 +89,11 @@ DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.sup
    | `CORS_ORIGIN` | Comma-separated: `https://your-admin.vercel.app,https://your-customer.vercel.app,https://your-kitchen.vercel.app` — `*.vercel.app` preview URLs are allowed automatically |
    | `FRONTEND_URL` | *(Add after deploying frontends)* |
    | `ADMIN_URL` | *(Add after deploying frontends)* |
-   | `API_URL` | `https://digital-order-api.onrender.com` |
+   | `API_URL` | `https://YOUR-SERVICE-NAME.onrender.com` (match your Render service name) |
 
 6. **Deploy** → Wait for build (~5–10 min)
 
-7. **Note your API URL:** `https://digital-order-api.onrender.com` (or your custom name)
+7. **Note your API URL:** `https://YOUR-SERVICE-NAME.onrender.com` (e.g. `digital-order.onrender.com`)
 
 8. **Seed the database** (one-time):
    ```bash
@@ -118,8 +118,10 @@ Deploy each app as a **separate Vercel project**.
 4. **Environment Variables:**
    | Key | Value |
    |----|-------|
-   | `NEXT_PUBLIC_API_URL` | `https://your-api.onrender.com/api` |
-   | `NEXT_PUBLIC_SOCKET_URL` | `https://your-api.onrender.com` |
+   | `NEXT_PUBLIC_API_URL` | `https://YOUR-SERVICE.onrender.com/api` (must match your Render URL) |
+   | `NEXT_PUBLIC_SOCKET_URL` | `https://YOUR-SERVICE.onrender.com` |
+   
+   > **Important:** Set these for **Production** and **Preview** environments in Vercel (Settings → Environment Variables → check both).
 
 5. **Deploy**
 
@@ -180,8 +182,8 @@ DATABASE_URL="postgresql://..." npx prisma studio
 | **Customer** | `https://digital-order-customer.vercel.app` |
 | **Admin** | `https://digital-order-admin.vercel.app` |
 | **Kitchen** | `https://digital-order-kitchen.vercel.app` |
-| **API** | `https://digital-order-api.onrender.com` |
-| **API Docs** | `https://digital-order-api.onrender.com/api/docs` |
+| **API** | `https://YOUR-SERVICE.onrender.com` |
+| **API Docs** | `https://YOUR-SERVICE.onrender.com/api/docs` |
 
 ## Default Login Credentials
 
@@ -192,6 +194,20 @@ Customer: customer@demo.com / Customer@123
 ```
 
 ## Troubleshooting
+
+### 500 Internal Server Error on /api/auth/register
+
+1. **See the error without Render logs** — Open browser DevTools (F12) → **Network** tab → trigger the failing request (e.g. register) → click the red failed request → **Response** tab. The `message` field shows the actual error.
+
+2. **Optional:** Add `DEBUG_ERRORS=true` in Render Environment to include stack trace in the response.
+
+4. **Common causes:**
+   - **Migrations not run** — Run `npx prisma migrate deploy` (or ensure migrations run in Render start command).
+   - **Database not seeded** — Run `npx prisma db seed` locally with your Supabase `DATABASE_URL`.
+   - **Missing JWT_SECRET / JWT_REFRESH_SECRET** — Set both in Render Environment.
+   - **Prisma schema mismatch** — Ensure all migrations are applied to Supabase.
+
+5. **Verify in Render** — Environment variables: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `REDIS_URL`.
 
 ### P1001: Can't reach database server (Supabase)
 
@@ -249,3 +265,8 @@ When ready for production:
 - **Vercel:** Add domain in Project Settings → Domains (free SSL)
 - **Render:** Add custom domain in Service Settings (free SSL)
 - Free subdomains: `*.vercel.app` and `*.onrender.com` work out of the box
+
+
+admin panel - vercel: https://digital-order-admin-rnf4h68pc-mitrovics-projects.vercel.app/
+customer app - vercel: https://digital-order-customer-app.vercel.app/
+backend - render: https://digital-order.onrender.com/api/docs
