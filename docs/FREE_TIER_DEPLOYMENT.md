@@ -74,7 +74,7 @@ DIRECT_URL=postgresql://postgres.[ref]:[password]@db.[ref].supabase.co:5432/post
 
    **Start Command:**
    ```bash
-   cd apps/api && npx prisma migrate deploy && node dist/main.js
+   cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
    ```
 
 5. **Environment Variables** (Render Dashboard → Environment):
@@ -190,6 +190,29 @@ DATABASE_URL="postgresql://..." npx prisma studio
 Super Admin: admin@digitalorder.com / Admin@123
 Demo Tenant: admin@demo.com / Admin@123
 Customer: customer@demo.com / Customer@123
+```
+
+## Troubleshooting
+
+### P1001: Can't reach database server (Supabase)
+
+If migrations fail with "Can't reach database server":
+
+1. **Supabase bans IPs after failed attempts** — Supabase Fail2ban blocks IPs after 2 wrong passwords. Check Supabase Dashboard → Database Settings → **Banned IPs** and unban if needed. Bans clear after ~30 min.
+
+2. **Use Session pooler for Render** — The direct connection (port 5432) can be blocked. Try the **Session** pooler instead of Direct:
+   - Supabase → Project Settings → Database
+   - Session pooler: `postgresql://postgres.[ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres`
+   - Use this for **both** DATABASE_URL and DIRECT_URL if migrations fail with direct.
+
+3. **Verify password** — No spaces, special chars properly URL-encoded in the connection string.
+
+### Cannot find module dist/main.js
+
+The NestJS monorepo build outputs to `dist/apps/api/src/main.js`. Use this start command:
+
+```bash
+cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
 ```
 
 ## Free Tier Limitations
