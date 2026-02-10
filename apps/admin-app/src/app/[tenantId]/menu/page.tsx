@@ -14,13 +14,18 @@ export default function MenuManagementPage() {
   const urlTenantId = params?.tenantId as string;
   const { tenantId: authTenantId, user } = useAuth();
   const tenantId = urlTenantId || authTenantId || (user?.role === 'SUPER_ADMIN' ? 'demo-tenant' : null);
-  const { data: items, isLoading, error } = useMenuItems(tenantId);
+  const { data: items, isLoading, error, isFetching } = useMenuItems(tenantId);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any | null>(null);
 
-  if (!tenantId || isLoading) {
+  // Aborted/canceled requests (e.g. navigation or refetch) are not real errors
+  const isAborted = error && (error instanceof Error && error.name === 'AbortError') ||
+    (error as any)?.code === 'ERR_CANCELED';
+  const showError = error && !isAborted;
+
+  if (!tenantId || isLoading || (isFetching && !items?.length)) {
     return (
       <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 to-slate-100">
         <div className="text-center">
@@ -34,7 +39,7 @@ export default function MenuManagementPage() {
     );
   }
 
-  if (error) {
+  if (showError) {
     const err = error as any;
     const is404 = err?.response?.status === 404;
     const isNetwork = err?.code === 'ECONNABORTED' || err?.message === 'Network Error' || !err?.response;

@@ -6,17 +6,21 @@ import apiClient from '../lib/apiClient';
 export function useMenuItems(tenantId: string | null) {
   return useQuery({
     queryKey: ['menuItems', tenantId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!tenantId) throw new Error('tenantId required');
-      const { data } = await apiClient.get(`/menu/items?tenantId=${tenantId}`);
+      const { data } = await apiClient.get(`/menu/items?tenantId=${tenantId}`, { signal });
       return data;
     },
     enabled: !!tenantId,
-    staleTime: 0, // Always treat data as stale
+    // Avoid cancel/refetch loops: keep data fresh for 60s, don't refetch on every mount/focus
+    staleTime: 60_000,
     refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    // Retry on transient failures (Render cold start, network)
-    retry: 3,
+    refetchOnWindowFocus: false,
+    // Retry on transient failures (Render cold start, network), but not on abort
+    retry: (failureCount, error: any) => {
+      if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return false;
+      return failureCount < 3;
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
@@ -24,13 +28,16 @@ export function useMenuItems(tenantId: string | null) {
 export function useCategories(tenantId: string | null) {
   return useQuery({
     queryKey: ['categories', tenantId],
-    queryFn: async () => {
+    queryFn: async ({ signal }) => {
       if (!tenantId) throw new Error('tenantId required');
-      const { data } = await apiClient.get(`/menu/categories?tenantId=${tenantId}`);
+      const { data } = await apiClient.get(`/menu/categories?tenantId=${tenantId}`, { signal });
       return data;
     },
     enabled: !!tenantId,
-    retry: 3,
+    retry: (failureCount, error: any) => {
+      if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return false;
+      return failureCount < 3;
+    },
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 }
