@@ -14,7 +14,7 @@ export default function MenuManagementPage() {
   const urlTenantId = params?.tenantId as string;
   const { tenantId: authTenantId, user } = useAuth();
   const tenantId = urlTenantId || authTenantId || (user?.role === 'SUPER_ADMIN' ? 'demo-tenant' : null);
-  const { data: items, isLoading, error, isFetching } = useMenuItems(tenantId);
+  const { data: items, isLoading, error, isFetching, refetch } = useMenuItems(tenantId);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -42,7 +42,8 @@ export default function MenuManagementPage() {
   if (showError) {
     const err = error as any;
     const is404 = err?.response?.status === 404;
-    const isNetwork = err?.code === 'ECONNABORTED' || err?.message === 'Network Error' || !err?.response;
+    const isTimeout = err?.code === 'ECONNABORTED';
+    const isNetwork = isTimeout || err?.message === 'Network Error' || !err?.response;
     const apiUrl = typeof window !== 'undefined' ? (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api') : 'API URL';
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
@@ -56,11 +57,13 @@ export default function MenuManagementPage() {
           <p className="text-slate-600 text-sm mb-4">
             {is404
               ? `Tenant "${tenantId}" was not found. Run the database seed to create it.`
-              : isNetwork
-                ? `Could not connect to the API. In production, ensure Vercel has NEXT_PUBLIC_API_URL set to your Render API URL (e.g. https://your-api.onrender.com/api).`
-                : err?.response?.data?.message || 'Could not connect to the API.'}
+              : isTimeout
+                ? 'The request timed out. On free-tier hosting the API can take up to 60 seconds to wake up. Click "Try again" once the service is ready.'
+                : isNetwork
+                  ? 'Could not connect to the API. In production, ensure Vercel has NEXT_PUBLIC_API_URL set to your Render API URL (e.g. https://your-api.onrender.com/api).'
+                  : err?.response?.data?.message || 'Could not connect to the API.'}
           </p>
-          {isNetwork && (
+          {isNetwork && !isTimeout && (
             <p className="text-slate-500 text-xs mb-4">
               Current API URL: <code className="bg-slate-100 px-1 rounded break-all">{apiUrl}</code>
             </p>
@@ -70,6 +73,9 @@ export default function MenuManagementPage() {
               From the project root: <code className="bg-slate-100 px-1 rounded">cd apps/api && npx prisma db seed</code>
             </p>
           )}
+          <Button onClick={() => refetch()} className="mt-4">
+            Try again
+          </Button>
         </div>
       </div>
     );
