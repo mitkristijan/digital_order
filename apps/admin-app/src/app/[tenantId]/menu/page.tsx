@@ -34,6 +34,13 @@ export default function MenuManagementPage() {
           <p className="mt-2 text-slate-500 text-sm">
             First load may take up to 60 seconds on free-tier hosting.
           </p>
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-6 px-5 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -73,9 +80,13 @@ export default function MenuManagementPage() {
               From the project root: <code className="bg-slate-100 px-1 rounded">cd apps/api && npx prisma db seed</code>
             </p>
           )}
-          <Button onClick={() => refetch()} className="mt-4">
+          <button
+            type="button"
+            onClick={() => refetch()}
+            className="mt-6 px-5 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
+          >
             Try again
-          </Button>
+          </button>
         </div>
       </div>
     );
