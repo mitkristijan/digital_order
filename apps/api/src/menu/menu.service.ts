@@ -2,12 +2,32 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
+/** Max time to wait for Redis before falling back to DB (avoids hanging on slow Upstash/network) */
+const REDIS_GET_TIMEOUT_MS = 4000;
+
 @Injectable()
 export class MenuService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
   ) {}
+
+  private async redisGetWithTimeout(key: string): Promise<string | null> {
+    try {
+      return await Promise.race([
+        this.redis.get(key),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS),
+        ),
+      ]);
+    } catch {
+      return null;
+    }
+  }
+
+  private redisSetNoWait(key: string, value: string, ttl?: number): void {
+    this.redis.set(key, value, ttl).catch((err) => console.warn('Redis set failed:', err?.message));
+  }
 
   // ========== CATEGORIES ==========
 
@@ -26,7 +46,7 @@ export class MenuService {
   async getCategories(tenantIdOrSubdomain: string) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     const cacheKey = `tenant:${tenantId}:categories`;
-    const cached = await this.redis.get(cacheKey);
+    const cached = await this.redisGetWithTimeout(cacheKey);
     
     if (cached) {
       return JSON.parse(cached);
@@ -52,7 +72,7 @@ export class MenuService {
       })),
     }));
 
-    await this.redis.set(cacheKey, JSON.stringify(serializedCategories), 300);
+    this.redisSetNoWait(cacheKey, JSON.stringify(serializedCategories), 300);
     return serializedCategories;
   }
 
@@ -145,7 +165,7 @@ export class MenuService {
 
     console.log(`📥 Getting menu items for tenant: ${tenantIdOrSubdomain} (UUID: ${tenantId}), cacheKey: ${cacheKey}`);
     
-    const cached = await this.redis.get(cacheKey);
+    const cached = await this.redisGetWithTimeout(cacheKey);
     if (cached) {
       console.log(`✅ Cache HIT for ${cacheKey}`);
       return JSON.parse(cached);
@@ -185,8 +205,8 @@ export class MenuService {
         this.serializeMenuItem(item),
       );
 
-      await this.redis.set(cacheKey, JSON.stringify(serializedItems), 300);
-      console.log(`💾 Cached ${serializedItems.length} items with key: ${cacheKey}`);
+      this.redisSetNoWait(cacheKey, JSON.stringify(serializedItems), 300);
+      console.log(`💾 Caching ${serializedItems.length} items with key: ${cacheKey}`);
       return serializedItems;
     } finally {
       (globalThis as any).currentTenantId = previousTenantId;
@@ -377,7 +397,7 @@ export class MenuService {
   async getFullMenu(tenantIdOrSubdomain: string) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     const cacheKey = `tenant:${tenantId}:menu:full`;
-    const cached = await this.redis.get(cacheKey);
+    const cached = await this.redisGetWithTimeout(cacheKey);
 
     if (cached) {
       return JSON.parse(cached);
@@ -420,7 +440,7 @@ export class MenuService {
       ),
     }));
 
-    await this.redis.set(cacheKey, JSON.stringify(serializedMenu), 300);
+    this.redisSetNoWait(cacheKey, JSON.stringify(serializedMenu), 300);
     return serializedMenu;
   }
 

@@ -8,7 +8,10 @@ export function useMenuItems(tenantId: string | null) {
     queryKey: ['menuItems', tenantId],
     queryFn: async ({ signal }) => {
       if (!tenantId) throw new Error('tenantId required');
-      const { data } = await apiClient.get(`/menu/items?tenantId=${tenantId}`, { signal });
+      const { data } = await apiClient.get(`/menu/items?tenantId=${tenantId}`, {
+        signal,
+        timeout: 120_000, // Allow 2 min for Render free-tier cold start
+      });
       return data;
     },
     enabled: !!tenantId,

@@ -27,21 +27,19 @@ export default function MenuManagementPage() {
 
   if (!tenantId || isLoading || (isFetching && !items?.length)) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-        <div className="text-center">
-          <Spinner size="lg" />
-          <p className="mt-4 text-slate-600">Loading menu items...</p>
-          <p className="mt-2 text-slate-500 text-sm">
-            First load may take up to 60 seconds on free-tier hosting.
-          </p>
-          <button
-            type="button"
-            onClick={() => refetch()}
-            className="mt-6 px-5 py-2.5 rounded-lg bg-slate-800 text-white text-sm font-medium hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2"
-          >
-            Try again
-          </button>
-        </div>
+      <div className="flex flex-col items-center justify-center min-h-[80vh] bg-gradient-to-br from-slate-50 to-slate-100 px-4">
+        <Spinner size="lg" />
+        <p className="mt-4 text-slate-600">Loading menu items...</p>
+        <p className="mt-2 text-slate-500 text-sm text-center">
+          First load may take up to 2 minutes on free-tier hosting.
+        </p>
+        <button
+          type="button"
+          onClick={() => refetch()}
+          className="mt-6 px-6 py-3 rounded-lg bg-blue-600 text-white font-medium shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+        >
+          Try again
+        </button>
       </div>
     );
   }
@@ -65,7 +63,7 @@ export default function MenuManagementPage() {
             {is404
               ? `Tenant "${tenantId}" was not found. Run the database seed to create it.`
               : isTimeout
-                ? 'The request timed out. On free-tier hosting the API can take up to 60 seconds to wake up. Click "Try again" once the service is ready.'
+                ? 'The request timed out. On free-tier hosting the API can take up to 2 minutes to wake up. Click "Try again" once the service is ready.'
                 : isNetwork
                   ? 'Could not connect to the API. In production, ensure Vercel has NEXT_PUBLIC_API_URL set to your Render API URL (e.g. https://your-api.onrender.com/api).'
                   : err?.response?.data?.message || 'Could not connect to the API.'}
