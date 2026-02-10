@@ -58,7 +58,7 @@ services:
     build:
       context: .
       dockerfile: ./apps/api/Dockerfile
-    container_name: digital-order-api
+    container_name: digital-order
     depends_on:
       postgres:
         condition: service_healthy
