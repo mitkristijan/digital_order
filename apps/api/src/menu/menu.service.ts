@@ -123,6 +123,7 @@ export class MenuService {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     const { variants, suggestedItemIds, ...itemData } = data;
 
+    // Create menu item first without suggestedItems (resilient when MenuItemSuggestedItem table is missing)
     const menuItem = await this.prisma.menuItem.create({
       data: {
         ...itemData,
@@ -132,27 +133,27 @@ export class MenuService {
               create: variants,
             }
           : undefined,
-        suggestedItems:
-          suggestedItemIds?.length > 0
-            ? {
-                create: suggestedItemIds.map((suggestedItemId: string) => ({
-                  suggestedItemId,
-                })),
-              }
-            : undefined,
       },
       include: {
         variants: true,
         category: true,
-        suggestedItems: {
-          include: {
-            suggestedItem: {
-              select: { id: true, name: true, basePrice: true, imageUrl: true },
-            },
-          },
-        },
       },
     });
+
+    // Add suggested items separately - table may not exist on fresh/migrating DBs
+    if (suggestedItemIds?.length > 0) {
+      try {
+        await this.prisma.menuItemSuggestedItem.createMany({
+          data: suggestedItemIds.map((suggestedItemId: string) => ({
+            menuItemId: menuItem.id,
+            suggestedItemId,
+          })),
+          skipDuplicates: true,
+        });
+      } catch (err) {
+        console.warn('MenuItemSuggestedItem table unavailable, skipping suggestions:', (err as Error)?.message);
+      }
+    }
 
     await this.invalidateMenuCache(tenantId);
     return this.serializeMenuItem(menuItem);

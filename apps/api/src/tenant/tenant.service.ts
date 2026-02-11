@@ -5,12 +5,30 @@ import { CreateTenantRequest, Tenant } from '@digital-order/types';
 import { slugify } from '@digital-order/utils';
 import * as crypto from 'crypto';
 
+const REDIS_GET_TIMEOUT_MS = 4000;
+
 @Injectable()
 export class TenantService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
   ) {}
+
+  private async redisGetWithTimeout(key: string): Promise<string | null> {
+    try {
+      return await Promise.race([
+        this.redis.get(key),
+        new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS),
+      ]);
+    } catch {
+      return null;
+    }
+  }
+
+  private redisSetNoWait(key: string, value: string, ttl?: number): void {
+    this.redis.set(key, value, ttl).catch((err) => console.warn('Redis set failed:', err?.message));
+  }
 
   async create(dto: CreateTenantRequest, ownerId: string): Promise<Tenant> {
     // Validate subdomain availability
@@ -79,8 +97,8 @@ export class TenantService {
     const resolvedId = await this.resolveTenantId(idOrSubdomain);
     const cacheKey = `tenant:${resolvedId}`;
 
-    // Try cache first
-    const cached = await this.redis.get(cacheKey);
+    // Try cache first (with timeout - avoid hanging on slow Redis)
+    const cached = await this.redisGetWithTimeout(cacheKey);
     if (cached) {
       return JSON.parse(cached) as Tenant;
     }
@@ -90,7 +108,7 @@ export class TenantService {
     });
 
     if (tenant) {
-      await this.redis.set(cacheKey, JSON.stringify(tenant), 600); // 10 min cache
+      this.redisSetNoWait(cacheKey, JSON.stringify(tenant), 600); // 10 min cache
     }
 
     return tenant as unknown as Tenant | null;

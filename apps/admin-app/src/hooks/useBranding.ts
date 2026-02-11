@@ -16,8 +16,11 @@ export function useBranding(tenantId: string) {
 
   const { data, isLoading } = useQuery({
     queryKey: ['branding', tenantId],
-    queryFn: async () => {
-      const { data } = await apiClient.get(`/tenants/${tenantId}`);
+    queryFn: async ({ signal }) => {
+      const { data } = await apiClient.get(`/tenants/${tenantId}`, {
+        signal,
+        timeout: 120_000, // 2 min for Render cold start
+      });
       const settings = data?.settings || {};
       const theme = settings?.theme || {};
       return {
@@ -31,6 +34,11 @@ export function useBranding(tenantId: string) {
       } as Branding;
     },
     enabled: !!tenantId,
+    retry: (failureCount, error: any) => {
+      if (error?.name === 'AbortError' || error?.code === 'ERR_CANCELED') return false;
+      return failureCount < 3;
+    },
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000),
   });
 
   const updateMutation = useMutation({

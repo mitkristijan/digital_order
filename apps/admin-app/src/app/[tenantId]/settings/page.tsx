@@ -16,7 +16,10 @@ export default function SettingsPage() {
   const params = useParams();
   const urlTenantId = params?.tenantId as string;
   const { tenantId: authTenantId, menuSlug, user, refetchUser } = useAuth();
-  const effectiveTenant = urlTenantId || authTenantId || (user?.role === 'SUPER_ADMIN' ? 'demo-tenant' : null);
+  // Use auth tenantId (UUID) for TENANT_ADMIN - ensures correct tenant when subdomain/slug mismatches
+  const effectiveTenant =
+    (user?.role === 'TENANT_ADMIN' && authTenantId) ? authTenantId
+    : (urlTenantId || authTenantId || (user?.role === 'SUPER_ADMIN' ? 'demo-tenant' : null));
   const [activeTab, setActiveTab] = useState<TabId>('branding');
 
   const tabs: { id: TabId; label: string }[] = [
