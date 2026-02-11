@@ -181,25 +181,47 @@ export class MenuService {
     (globalThis as any).currentTenantId = undefined;
     
     try {
-      const menuItems = await this.prisma.menuItem.findMany({
-        where: {
-          tenantId,
-          active: true,
-          ...(categoryId && { categoryId }),
-        },
-        include: {
-          category: true,
-          variants: { where: { active: true } },
-          suggestedItems: {
-            include: {
-              suggestedItem: {
-                select: { id: true, name: true, basePrice: true, imageUrl: true },
-              },
+      const baseInclude = {
+        category: true,
+        variants: { where: { active: true } },
+      };
+      const fullInclude = {
+        ...baseInclude,
+        suggestedItems: {
+          include: {
+            suggestedItem: {
+              select: { id: true, name: true, basePrice: true, imageUrl: true },
             },
           },
         },
-        orderBy: { createdAt: 'desc' },
-      });
+      };
+
+      let menuItems: any[];
+      try {
+        menuItems = await this.prisma.menuItem.findMany({
+          where: {
+            tenantId,
+            active: true,
+            ...(categoryId && { categoryId }),
+          },
+          include: fullInclude,
+          orderBy: { createdAt: 'desc' },
+        });
+      } catch (err: any) {
+        if (err?.message?.includes('MenuItemSuggestedItem') || err?.message?.includes('does not exist')) {
+          menuItems = await this.prisma.menuItem.findMany({
+            where: {
+              tenantId,
+              active: true,
+              ...(categoryId && { categoryId }),
+            },
+            include: baseInclude,
+            orderBy: { createdAt: 'desc' },
+          });
+        } else {
+          throw err;
+        }
+      }
 
       console.log(`📊 Found ${menuItems.length} items in database for tenant ${tenantId}`);
 
@@ -406,34 +428,57 @@ export class MenuService {
       return JSON.parse(cached);
     }
 
-    const menu = await this.prisma.category.findMany({
-      where: { tenantId, active: true },
-      orderBy: { sortOrder: 'asc' },
-      include: {
-        menuItems: {
-          where: { active: true, availability: true },
-          include: {
-            variants: { where: { active: true } },
-            modifierGroups: {
-              include: {
-                modifierGroup: {
-                  include: {
-                    modifiers: { where: { active: true } },
-                  },
-                },
-              },
-            },
-            suggestedItems: {
-              include: {
-                suggestedItem: {
-                  select: { id: true, name: true, basePrice: true, imageUrl: true },
-                },
-              },
+    const baseMenuItemsInclude = {
+      variants: { where: { active: true } },
+      modifierGroups: {
+        include: {
+          modifierGroup: {
+            include: {
+              modifiers: { where: { active: true } },
             },
           },
         },
       },
-    });
+    };
+    const fullMenuItemsInclude = {
+      ...baseMenuItemsInclude,
+      suggestedItems: {
+        include: {
+          suggestedItem: {
+            select: { id: true, name: true, basePrice: true, imageUrl: true },
+          },
+        },
+      },
+    };
+
+    let menu: any[];
+    try {
+      menu = await this.prisma.category.findMany({
+        where: { tenantId, active: true },
+        orderBy: { sortOrder: 'asc' },
+        include: {
+          menuItems: {
+            where: { active: true, availability: true },
+            include: fullMenuItemsInclude,
+          },
+        },
+      });
+    } catch (err: any) {
+      if (err?.message?.includes('MenuItemSuggestedItem') || err?.message?.includes('does not exist')) {
+        menu = await this.prisma.category.findMany({
+          where: { tenantId, active: true },
+          orderBy: { sortOrder: 'asc' },
+          include: {
+            menuItems: {
+              where: { active: true, availability: true },
+              include: baseMenuItemsInclude,
+            },
+          },
+        });
+      } else {
+        throw err;
+      }
+    }
 
     // Convert Decimal types to numbers before caching
     const serializedMenu = menu.map((cat) => ({
