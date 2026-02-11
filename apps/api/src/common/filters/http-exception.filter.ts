@@ -1,5 +1,6 @@
 import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { Prisma } from '@prisma/client';
 
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
@@ -10,17 +11,26 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse<Response>();
     const request = ctx.getRequest<Request>();
 
-    const status =
-      exception instanceof HttpException
-        ? exception.getStatus()
-        : HttpStatus.INTERNAL_SERVER_ERROR;
+    let status = HttpStatus.INTERNAL_SERVER_ERROR;
+    if (exception instanceof HttpException) {
+      status = exception.getStatus();
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
+      // P2025 = Record not found - return 404 instead of 500
+      if (exception.code === 'P2025') {
+        status = HttpStatus.NOT_FOUND;
+      }
+    }
 
-    const message =
-      exception instanceof HttpException
-        ? exception.getResponse()
-        : exception instanceof Error
-          ? exception.message
-          : 'Internal server error';
+    let message: string | object;
+    if (exception instanceof HttpException) {
+      message = exception.getResponse();
+    } else if (exception instanceof Prisma.PrismaClientKnownRequestError && exception.code === 'P2025') {
+      message = 'Record not found';
+    } else if (exception instanceof Error) {
+      message = exception.message;
+    } else {
+      message = 'Internal server error';
+    }
 
     const errorMessage = typeof message === 'object' ? (message as any).message : message;
     const stack = exception instanceof Error ? exception.stack : undefined;
