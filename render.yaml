@@ -28,7 +28,8 @@ services:
       - key: PORT
         value: 3000
       # Set these in Render Dashboard → Environment:
-      # - DATABASE_URL (from Supabase)
+      # - DATABASE_URL (from Supabase - pooler URL)
+      # - DIRECT_URL (from Supabase - direct URL for migrations)
       # - REDIS_URL (from Upstash)
       # - JWT_SECRET
       # - JWT_REFRESH_SECRET
