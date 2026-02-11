@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+// Ensure baseURL always ends with /api (e.g. https://x.onrender.com/api) so POST /orders hits /api/orders
+const rawUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api';
+const baseURL = rawUrl.endsWith('/api') ? rawUrl : rawUrl.replace(/\/?$/, '') + '/api';
+
 const apiClient = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000/api',
+  baseURL,
   headers: {
     'Content-Type': 'application/json',
   },

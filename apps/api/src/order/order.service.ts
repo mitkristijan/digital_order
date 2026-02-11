@@ -263,12 +263,14 @@ export class OrderService {
     const tenant = await this.prisma.tenant.findFirst({
       where: {
         OR: [{ subdomain: tenantIdOrSubdomain }, { menuSlug: tenantIdOrSubdomain }],
-        status: 'ACTIVE',
+        status: { in: ['ACTIVE', 'TRIAL'] }, // TRIAL tenants can receive orders (menu shows for them)
       },
       select: { id: true },
     });
     if (!tenant) {
-      throw new NotFoundException('Tenant not found');
+      throw new NotFoundException(
+        `Tenant not found for "${tenantIdOrSubdomain}". Ensure the tenant exists with matching subdomain or menu slug.`,
+      );
     }
     return tenant.id;
   }

@@ -68,6 +68,7 @@ export default function CheckoutPage() {
     } catch (error: any) {
       console.error('Order submission failed:', error);
       const message = error.response?.data?.message || 'Failed to submit order. Please try again.';
+      const status = error.response?.status;
       const isStaleCart = typeof message === 'string' && /not found or inactive/i.test(message);
       if (isStaleCart) {
         clearCart();
@@ -75,6 +76,13 @@ export default function CheckoutPage() {
           'Some items in your cart are no longer available. Your cart has been cleared. Please add items again from the menu.'
         );
         router.push(`/${tenantId}/menu`);
+        return;
+      }
+      // 404 often means tenant not found or API cold start - provide helpful hint
+      if (status === 404) {
+        alert(
+          `${message}\n\nIf this persists, the restaurant may need to refresh their menu link. Try again in a moment.`
+        );
         return;
       }
       alert(message);

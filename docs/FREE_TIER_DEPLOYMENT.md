@@ -272,6 +272,14 @@ cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
 
 4. **Verify** — Open DevTools → Network tab, then visit the menu page. Check if requests to your Render API are sent and whether they succeed or fail.
 
+### 404 on POST /api/orders when customer confirms order
+
+1. **API URL must include /api** — In Vercel (customer app), set `NEXT_PUBLIC_API_URL` = `https://YOUR-SERVICE.onrender.com/api` (include `/api`). The customer app normalizes this, but the correct format is required.
+
+2. **Tenant must exist** — The tenant slug in the URL (e.g. `nikodim1` in `/nikodim1/checkout`) must match a tenant in the production database with `subdomain` or `menuSlug` = that value. Use Prisma Studio or your DB UI to verify the tenant exists and is `ACTIVE`.
+
+3. **Cold start** — On Render free tier, the first request after 15 min idle can fail or time out. Ask the customer to try again after 30–60 seconds.
+
 ### CORS: "No 'Access-Control-Allow-Origin' header" (e.g. on /api/auth/register)
 
 1. **Vercel preview URLs** — The API allows any origin whose host contains `.vercel.app` (production and preview). Ensure the API on Render has been **redeployed** after the latest code so this behavior is active.

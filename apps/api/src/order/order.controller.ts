@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { OrderService } from './order.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -30,7 +31,12 @@ export class OrderController {
     @Query('tenantId') tenantId: string,
     @CurrentUserId() customerId?: string,
   ) {
-    return this.orderService.createOrder(tenantId, dto, customerId);
+    if (!tenantId || typeof tenantId !== 'string' || !tenantId.trim()) {
+      throw new BadRequestException(
+        'tenantId query parameter is required (tenant subdomain or menu slug)',
+      );
+    }
+    return this.orderService.createOrder(tenantId.trim(), dto, customerId);
   }
 
   @Get()
@@ -75,7 +81,12 @@ export class OrderController {
     @Query('tenantId') tenantId: string,
     @Param('orderNumber') orderNumber: string,
   ) {
-    return this.orderService.getOrderByNumber(tenantId, orderNumber);
+    if (!tenantId || typeof tenantId !== 'string' || !tenantId.trim()) {
+      throw new BadRequestException(
+        'tenantId query parameter is required (tenant subdomain or menu slug)',
+      );
+    }
+    return this.orderService.getOrderByNumber(tenantId.trim(), orderNumber);
   }
 
   @Patch(':id/status')
