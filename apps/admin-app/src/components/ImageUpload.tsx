@@ -57,7 +57,6 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       reader.onload = (e) => {
         const img = new Image();
         img.onload = () => {
-          // Create canvas for compression
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           if (!ctx) {
@@ -65,30 +64,46 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
             return;
           }
 
-          // Calculate new dimensions (max 1200px width/height while maintaining aspect ratio)
-          let width = img.width;
-          let height = img.height;
-          const maxDimension = 1200;
+          // Target max ~400KB base64 to stay under Render/proxy limits (~500KB safe)
+          const MAX_BASE64_BYTES = 400 * 1024;
+          const attempts: { maxDimension: number; quality: number }[] = [
+            { maxDimension: 800, quality: 0.6 },
+            { maxDimension: 600, quality: 0.5 },
+            { maxDimension: 480, quality: 0.4 },
+          ];
 
-          if (width > maxDimension || height > maxDimension) {
-            if (width > height) {
-              height = (height / width) * maxDimension;
-              width = maxDimension;
-            } else {
-              width = (width / height) * maxDimension;
-              height = maxDimension;
+          const tryCompress = (attemptIndex: number) => {
+            const { maxDimension, quality } = attempts[attemptIndex];
+            let width = img.width;
+            let height = img.height;
+
+            if (width > maxDimension || height > maxDimension) {
+              if (width > height) {
+                height = (height / width) * maxDimension;
+                width = maxDimension;
+              } else {
+                width = (width / height) * maxDimension;
+                height = maxDimension;
+              }
             }
-          }
 
-          canvas.width = width;
-          canvas.height = height;
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            const result = canvas.toDataURL('image/jpeg', quality);
 
-          // Draw and compress
-          ctx.drawImage(img, 0, 0, width, height);
-          
-          // Convert to JPEG with 0.8 quality for better compression
-          const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.8);
-          resolve(compressedDataUrl);
+            // Base64 data URL: "data:image/jpeg;base64," + base64Payload
+            const base64Length = result.length - result.indexOf(',') - 1;
+            const estimatedBytes = (base64Length * 3) / 4;
+            const isLastAttempt = attemptIndex === attempts.length - 1;
+            if (estimatedBytes <= MAX_BASE64_BYTES || isLastAttempt) {
+              resolve(result);
+            } else {
+              tryCompress(attemptIndex + 1);
+            }
+          };
+
+          tryCompress(0);
         };
         img.onerror = () => reject(new Error('Failed to load image'));
         img.src = e.target?.result as string;
@@ -212,8 +227,8 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       )}
 
       <p className="text-xs text-gray-500">
-        {inputMode === 'upload' 
-          ? 'Upload an image (max 10MB). Images are automatically compressed and resized to 1200px.'
+        {inputMode === 'upload'
+          ? 'Upload an image (max 10MB). Images are compressed to ~400KB for reliable uploads.'
           : 'Enter a URL to an image hosted online'
         }
       </p>

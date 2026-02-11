@@ -3,26 +3,28 @@ import { test, expect } from '@playwright/test';
 test.describe('Customer App', () => {
   test('should load homepage', async ({ page }) => {
     await page.goto('/');
+    // Root redirects to tenant dashboard
+    await expect(page).toHaveURL(/\/testera\/dashboard/);
     await expect(page.getByText('Digital Order')).toBeVisible();
     await expect(page.getByText('Order food from your favorite restaurants')).toBeVisible();
   });
 
   test('should navigate to menu', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/testera/dashboard');
     await page.getByRole('link', { name: 'View Menu' }).click();
     await expect(page).toHaveURL(/\/testera\/menu/);
   });
 
   test('should be responsive on mobile', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 667 });
-    await page.goto('/');
+    await page.goto('/testera/dashboard');
     await expect(page.getByText('Digital Order')).toBeVisible();
   });
 });
 
 test.describe('Order Flow', () => {
   test('complete order workflow', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/testera/dashboard');
     
     // Browse menu
     await page.getByRole('link', { name: 'View Menu' }).click();

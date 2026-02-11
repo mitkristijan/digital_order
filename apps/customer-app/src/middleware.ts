@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-const NON_TENANT_ROUTES = ['', 'track-order', '_next', 'api', 'favicon'];
+const NON_TENANT_ROUTES = ['', 'track-order', '_next', 'api', 'favicon', 'manifest.json'];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -14,12 +14,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Tenant routes: /[tenantId]/menu, /[tenantId]/checkout, etc.
-  // Allow any tenant slug - each tenant has their own menu at /{slug}/menu
-  // When visiting tenant root (e.g. /nikodir), redirect to menu
+  // Tenant routes: /[tenantId]/dashboard, /[tenantId]/menu, /[tenantId]/checkout, etc.
+  // Allow any tenant slug - each tenant has their own dashboard at /{slug}/dashboard
+  // When visiting tenant root (e.g. /nikodir), redirect to dashboard
   if (segments.length === 1) {
     const url = request.nextUrl.clone();
-    url.pathname = `/${first}/menu`;
+    url.pathname = `/${first}/dashboard`;
     return NextResponse.redirect(url);
   }
 

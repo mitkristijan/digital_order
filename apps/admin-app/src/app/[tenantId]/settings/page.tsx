@@ -1,6 +1,56 @@
 'use client';
 
 import React, { useState } from 'react';
+
+/** Compress a data URL to stay under ~400KB for reliable API uploads (Render/proxy limits). */
+async function compressDataUrl(dataUrl: string): Promise<string> {
+  const MAX_BASE64_BYTES = 400 * 1024;
+  const attempts: { maxDimension: number; quality: number }[] = [
+    { maxDimension: 800, quality: 0.6 },
+    { maxDimension: 600, quality: 0.5 },
+    { maxDimension: 480, quality: 0.4 },
+  ];
+
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      const tryCompress = (i: number) => {
+        const { maxDimension, quality } = attempts[i];
+        let w = img.width;
+        let h = img.height;
+        if (w > maxDimension || h > maxDimension) {
+          if (w > h) {
+            h = (h / w) * maxDimension;
+            w = maxDimension;
+          } else {
+            w = (w / h) * maxDimension;
+            h = maxDimension;
+          }
+        }
+        canvas.width = w;
+        canvas.height = h;
+        ctx.drawImage(img, 0, 0, w, h);
+        const result = canvas.toDataURL('image/jpeg', quality);
+        const base64Len = result.length - result.indexOf(',') - 1;
+        const bytes = (base64Len * 3) / 4;
+        if (bytes <= MAX_BASE64_BYTES || i === attempts.length - 1) {
+          resolve(result);
+        } else {
+          tryCompress(i + 1);
+        }
+      };
+      tryCompress(0);
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = dataUrl;
+  });
+}
 import { useParams } from 'next/navigation';
 import { AuthGuard } from '@/components/AuthGuard';
 import { useBranding } from '@/hooks/useBranding';
@@ -179,7 +229,12 @@ function BrandingTab({ tenantId }: { tenantId: string }) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaved(false);
-    await updateBranding({ ...form, heroBackgroundImage: form.heroBackgroundImage || null });
+    let imageValue = form.heroBackgroundImage || null;
+    // Compress large base64 images to avoid "request too long" errors on Render/proxy
+    if (imageValue && imageValue.startsWith('data:image/') && imageValue.length > 450_000) {
+      imageValue = await compressDataUrl(imageValue);
+    }
+    await updateBranding({ ...form, heroBackgroundImage: imageValue });
     setSaved(true);
   };
 
@@ -358,12 +413,16 @@ function ProfileTab({ onSaved }: { onSaved: () => Promise<void> }) {
     setSaved(false);
     setIsUpdating(true);
     try {
+      let avatarValue = form.avatar || null;
+      if (avatarValue && avatarValue.startsWith('data:image/') && avatarValue.length > 450_000) {
+        avatarValue = await compressDataUrl(avatarValue);
+      }
       await apiClient.patch('/auth/me', {
         firstName: form.firstName || null,
         lastName: form.lastName || null,
         email: form.email || null,
         phone: form.phone,
-        avatar: form.avatar || null,
+        avatar: avatarValue,
       });
       await onSaved();
       setSaved(true);

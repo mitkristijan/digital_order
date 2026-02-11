@@ -66,7 +66,7 @@ export default function MenuPage() {
               : 'Could not connect to the server. Please check your connection and try again.'}
           </p>
           <Link
-            href="/"
+            href={`/${tenantId}/dashboard`}
             className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-white font-medium text-sm"
             style={{ backgroundColor: 'var(--brand-primary)' }}
           >
@@ -80,7 +80,7 @@ export default function MenuPage() {
   if (!categories || categories.length === 0) {
     return (
       <div className="min-h-screen min-h-dvh bg-stone-50 flex flex-col items-center justify-center p-6">
-        <Link href="/" className="absolute top-4 left-4 p-2 -ml-2 rounded-full text-stone-600 hover:bg-stone-100">
+        <Link href={`/${tenantId}/dashboard`} className="absolute top-4 left-4 p-2 -ml-2 rounded-full text-stone-600 hover:bg-stone-100">
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
@@ -96,7 +96,7 @@ export default function MenuPage() {
             This restaurant has not added any menu items yet. Check back later or browse other options.
           </p>
           <Link
-            href="/"
+            href={`/${tenantId}/dashboard`}
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-white font-medium text-sm transition-colors"
             style={{ backgroundColor: 'var(--brand-primary)' }}
           >
@@ -130,7 +130,7 @@ export default function MenuPage() {
       {/* Header */}
       <div className="sticky top-0 z-20 bg-white/90 backdrop-blur-sm border-b border-stone-100 pt-[env(safe-area-inset-top,0px)] shadow-soft">
         <div className="flex items-center justify-between px-4 py-4">
-          <Link href="/" className="p-2 -ml-2 rounded-full text-stone-600 hover:bg-stone-100 active:bg-stone-200 transition-colors">
+          <Link href={`/${tenantId}/dashboard`} className="p-2 -ml-2 rounded-full text-stone-600 hover:bg-stone-100 active:bg-stone-200 transition-colors">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
