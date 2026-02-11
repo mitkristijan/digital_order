@@ -294,6 +294,10 @@ export class MenuService {
       for (const key of allowedFields) {
         if (rest[key] !== undefined) updateData[key] = rest[key];
       }
+      // Normalize imageUrl: empty string -> null (clearing/removing photo)
+      if ('imageUrl' in updateData && updateData.imageUrl === '') {
+        updateData.imageUrl = null;
+      }
 
       // Sync suggested items if provided (resilient when table has constraints)
       if (suggestedItemIds !== undefined) {
