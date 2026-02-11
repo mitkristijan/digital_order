@@ -16,11 +16,10 @@ export class TenantService {
 
   private async redisGetWithTimeout(key: string): Promise<string | null> {
     try {
-      return await Promise.race([
-        this.redis.get(key),
-        new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS)
-      ]);
+      const timeoutPromise = new Promise<null>((_, reject) => {
+        setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS);
+      });
+      return await Promise.race([this.redis.get(key), timeoutPromise]);
     } catch {
       return null;
     }
