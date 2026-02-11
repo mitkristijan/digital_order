@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { CUSTOMER_TENANT } from './config/tenant';
 
 const NON_TENANT_ROUTES = ['', 'track-order', '_next', 'api', 'favicon'];
 
@@ -16,19 +15,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Tenant routes: /[tenantId]/menu, /[tenantId]/checkout, etc.
-  // Guard: redirect to our tenant if a different tenant is in the URL
-  if (first !== CUSTOMER_TENANT) {
-    const rest = segments.slice(1).join('/');
-    const newPath = rest ? `/${CUSTOMER_TENANT}/${rest}` : `/${CUSTOMER_TENANT}`;
+  // Allow any tenant slug - each tenant has their own menu at /{slug}/menu
+  // When visiting tenant root (e.g. /nikodir), redirect to menu
+  if (segments.length === 1) {
     const url = request.nextUrl.clone();
-    url.pathname = newPath;
-    return NextResponse.redirect(url);
-  }
-
-  // /testera (tenant root) has no page - redirect to menu to avoid 404 from prefetch
-  if (first === CUSTOMER_TENANT && segments.length === 1) {
-    const url = request.nextUrl.clone();
-    url.pathname = `/${CUSTOMER_TENANT}/menu`;
+    url.pathname = `/${first}/menu`;
     return NextResponse.redirect(url);
   }
 
