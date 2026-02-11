@@ -9,6 +9,8 @@ import {
   Query,
   UseGuards,
   Patch,
+  UsePipes,
+  ValidationPipe,
 } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -111,6 +113,7 @@ export class MenuController {
   @Roles(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update menu item' })
+  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: false }))
   async updateMenuItem(
     @CurrentTenant() tenantId: string,
     @Query('tenantId') queryTenantId: string,
