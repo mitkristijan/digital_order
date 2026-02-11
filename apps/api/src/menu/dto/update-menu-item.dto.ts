@@ -1,4 +1,5 @@
 import { IsOptional, IsString, IsNumber, IsBoolean, IsArray } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 /**
  * DTO for updating menu items. All fields optional.
@@ -40,8 +41,9 @@ export class UpdateMenuItemDto {
   dietaryTags?: string[];
 
   @IsOptional()
+  @Transform(({ value }) => (value === '' ? null : value))
   @IsString()
-  imageUrl?: string;
+  imageUrl?: string | null;
 
   @IsOptional()
   @IsArray()

@@ -14,7 +14,7 @@ interface MenuItem {
   prepTime: number;
   allergens: string[];
   dietaryTags: string[];
-  imageUrl?: string;
+  imageUrl?: string | null;
   suggestedItems?: { suggestedItem: { id: string; name: string } }[];
 }
 

@@ -5,7 +5,7 @@ import { Input, Button } from '@digital-order/ui';
 
 interface ImageUploadProps {
   value?: string;
-  onChange: (url: string) => void;
+  onChange: (url: string | null) => void;
   label?: string;
   error?: string;
 }
@@ -114,7 +114,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   };
 
   const handleRemove = () => {
-    onChange('');
+    onChange(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
