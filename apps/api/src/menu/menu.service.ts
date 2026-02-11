@@ -4,6 +4,8 @@ import { RedisService } from '../redis/redis.service';
 
 /** Max time to wait for Redis before falling back to DB (avoids hanging on slow Upstash/network) */
 const REDIS_GET_TIMEOUT_MS = 4000;
+/** Max time to wait for cache invalidation - don't block API response on slow Redis */
+const REDIS_INVALIDATE_TIMEOUT_MS = 3000;
 
 @Injectable()
 export class MenuService {
@@ -478,15 +480,31 @@ export class MenuService {
     return base;
   }
 
-  private async invalidateMenuCache(tenantId: string) {
-    console.log(`🗑️  Invalidating menu cache for tenant: ${tenantId}`);
-    const menuKeys = await this.redis.keys(`tenant:${tenantId}:menu:*`);
-    const categoryKeys = await this.redis.keys(`tenant:${tenantId}:categories`);
-    console.log(`   Found ${menuKeys.length} menu keys and ${categoryKeys.length} category keys to delete`);
-    
-    await this.redis.flushPattern(`tenant:${tenantId}:menu:*`);
-    await this.redis.flushPattern(`tenant:${tenantId}:categories`);
-    
-    console.log(`✅ Cache invalidated successfully`);
+  private async invalidateMenuCache(tenantId: string): Promise<void> {
+    const doInvalidate = async () => {
+      console.log(`🗑️  Invalidating menu cache for tenant: ${tenantId}`);
+      const menuKeys = await this.redis.keys(`tenant:${tenantId}:menu:*`);
+      const categoryKeys = await this.redis.keys(`tenant:${tenantId}:categories`);
+      console.log(`   Found ${menuKeys.length} menu keys and ${categoryKeys.length} category keys to delete`);
+
+      await this.redis.flushPattern(`tenant:${tenantId}:menu:*`);
+      await this.redis.flushPattern(`tenant:${tenantId}:categories`);
+
+      console.log(`✅ Cache invalidated successfully`);
+    };
+
+    try {
+      await Promise.race([
+        doInvalidate(),
+        new Promise<void>((resolve) =>
+          setTimeout(() => {
+            console.warn(`Cache invalidation timed out after ${REDIS_INVALIDATE_TIMEOUT_MS}ms - continuing without blocking`);
+            resolve();
+          }, REDIS_INVALIDATE_TIMEOUT_MS),
+        ),
+      ]);
+    } catch (err) {
+      console.warn('Redis cache invalidation failed:', (err as Error)?.message);
+    }
   }
 }

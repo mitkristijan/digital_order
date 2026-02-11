@@ -33,7 +33,10 @@ export function useCategories(tenantId: string | null) {
     queryKey: ['categories', tenantId],
     queryFn: async ({ signal }) => {
       if (!tenantId) throw new Error('tenantId required');
-      const { data } = await apiClient.get(`/menu/categories?tenantId=${tenantId}`, { signal });
+      const { data } = await apiClient.get(`/menu/categories?tenantId=${tenantId}`, {
+        signal,
+        timeout: 120_000, // Allow 2 min for Render free-tier cold start
+      });
       return data;
     },
     enabled: !!tenantId,
@@ -50,7 +53,9 @@ export function useCreateCategory(tenantId: string) {
 
   return useMutation({
     mutationFn: async (categoryData: { name: string; description?: string }) => {
-      const { data } = await apiClient.post(`/menu/categories?tenantId=${tenantId}`, categoryData);
+      const { data } = await apiClient.post(`/menu/categories?tenantId=${tenantId}`, categoryData, {
+        timeout: 120_000, // Allow 2 min for Render free-tier cold start
+      });
       return data;
     },
     onSuccess: () => {

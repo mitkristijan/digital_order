@@ -36,7 +36,9 @@ export const ActiveOrderBanner: React.FC<ActiveOrderBannerProps> = ({ tenantId }
 
   if (!orderNumber) return null;
 
-  if (order && ['COMPLETED', 'DELIVERED', 'CANCELLED'].includes(order.status)) {
+  if (!order) return null;
+
+  if (['COMPLETED', 'DELIVERED', 'CANCELLED'].includes(order.status)) {
     return null;
   }
 
