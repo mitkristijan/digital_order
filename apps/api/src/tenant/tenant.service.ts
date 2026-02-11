@@ -19,7 +19,7 @@ export class TenantService {
       return await Promise.race([
         this.redis.get(key),
         new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS),
+          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS)
       ]);
     } catch {
       return null;

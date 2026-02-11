@@ -30,6 +30,7 @@ services:
       # Set these in Render Dashboard → Environment:
       # - DATABASE_URL (from Supabase - pooler URL)
       # - DIRECT_URL (from Supabase - direct URL for migrations)
+      # - REDIS_URL (from Upstash - must start with rediss://)
       # - REDIS_URL (from Upstash)
       # - JWT_SECRET
       # - JWT_REFRESH_SECRET
