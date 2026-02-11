@@ -30,7 +30,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.getResponse();
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       if (exception.code === 'P2025') message = 'Record not found';
-      else if (exception.code === 'P2003') message = 'Invalid reference: ' + (exception.meta?.field_name || exception.message);
+      else if (exception.code === 'P2003') message = 'Cannot delete: this item is referenced by orders or other records';
       else message = exception.message;
     } else if (exception instanceof Error) {
       message = exception.message;

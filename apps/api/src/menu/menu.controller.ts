@@ -9,8 +9,6 @@ import {
   Query,
   UseGuards,
   Patch,
-  UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -20,6 +18,7 @@ import { Roles, Public } from '../common/decorators/roles.decorator';
 import { CurrentTenant } from '../common/decorators/request.decorators';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserRole } from '@digital-order/types';
+import { UpdateMenuItemDto } from './dto/update-menu-item.dto';
 
 @ApiTags('menu')
 @Controller('menu')
@@ -113,12 +112,11 @@ export class MenuController {
   @Roles(UserRole.TENANT_ADMIN, UserRole.SUPER_ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update menu item' })
-  @UsePipes(new ValidationPipe({ transform: true, whitelist: true, forbidNonWhitelisted: false }))
   async updateMenuItem(
     @CurrentTenant() tenantId: string,
     @Query('tenantId') queryTenantId: string,
     @Param('id') id: string,
-    @Body() data: any,
+    @Body() data: UpdateMenuItemDto,
   ) {
     const effectiveTenantId = tenantId || queryTenantId;
     return this.menuService.updateMenuItem(effectiveTenantId, id, data);
