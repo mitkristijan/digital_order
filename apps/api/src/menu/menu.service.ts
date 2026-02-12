@@ -380,13 +380,8 @@ export class MenuService {
         throw new NotFoundException('Menu item not found or access denied');
       }
 
-      // Null out order item references first (preserves order history via menuItemName).
-      // Requires migration 20250212000000 - OrderItem.menuItemId must be nullable.
-      await this.prisma.orderItem.updateMany({
-        where: { menuItemId: id },
-        data: { menuItemId: null },
-      });
-      // RecipeItem, MenuItemSuggestedItem, etc. cascade on delete
+      // Deletion relies on DB FK: OrderItem.menuItemId has onDelete: SetNull (migration 20250212000000).
+      // Apply that migration first - run `prisma migrate deploy` on production.
       await this.prisma.menuItem.delete({
         where: { id },
       });
