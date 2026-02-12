@@ -72,7 +72,7 @@ DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.sup
 
    > **Important:** `--include=dev` is required because Render sets NODE_ENV=production, which skips devDependencies. The NestJS CLI (`@nestjs/cli`) is needed for the build.
 
-   **Start Command:**
+   **Start Command:** (migrations run automatically on every deploy)
 
    ```bash
    cd apps/api && npx prisma migrate deploy && node dist/apps/api/src/main.js
@@ -97,9 +97,10 @@ DIRECT_URL=postgresql://postgres.[ref]:[YOUR-PASSWORD]@aws-0-[region].pooler.sup
 
 7. **Note your API URL:** `https://YOUR-SERVICE-NAME.onrender.com` (e.g. `digital-order.onrender.com`)
 
-8. **Run migrations and seed** (one-time, from your machine):
+8. **Migrations and seed**:
 
-   Migrations must be applied before the app works. Run locally with your Supabase URLs:
+   - **Blueprint (render.yaml):** Migrations run automatically on every deploy via the start command. No manual step needed.
+   - **Manual Render setup:** Run migrations locally once before first deploy:
 
    ```bash
    cd apps/api

@@ -199,6 +199,7 @@ export class InventoryService {
     }
 
     for (const orderItem of order.items) {
+      if (!orderItem.menuItemId) continue; // Skip deleted menu items (order history preserved via menuItemName)
       const recipeItems = await this.getRecipeItems(orderItem.menuItemId);
       
       for (const recipeItem of recipeItems) {

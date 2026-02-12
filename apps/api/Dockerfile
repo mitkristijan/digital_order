@@ -52,4 +52,5 @@ EXPOSE 3000
 
 ENV PORT 3000
 
-CMD ["node", "apps/api/dist/main.js"]
+# Run migrations on startup, then start the app
+CMD ["sh", "-c", "cd apps/api && npx prisma migrate deploy && node dist/main.js"]

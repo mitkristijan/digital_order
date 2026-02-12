@@ -368,7 +368,7 @@ enum PaymentMethod {
 model OrderItem {
   id                  String      @id @default(uuid())
   orderId             String
-  menuItemId          String
+  menuItemId          String?     // Nullable: set to null when menu item is deleted (order history preserved via menuItemName)
   variantId           String?
   quantity            Int
   unitPrice           Decimal     @db.Decimal(10, 2)
@@ -382,7 +382,7 @@ model OrderItem {
 
   // Relations
   order       Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  menuItem    MenuItem        @relation(fields: [menuItemId], references: [id])
+  menuItem    MenuItem?       @relation(fields: [menuItemId], references: [id], onDelete: SetNull)
   variant     MenuItemVariant? @relation(fields: [variantId], references: [id])
 
   @@index([orderId])

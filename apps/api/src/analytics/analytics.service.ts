@@ -148,7 +148,7 @@ export class AnalyticsService {
       { name: string; orderCount: number; totalQuantity: number; revenue: number }
     >();
     for (const item of orderItems) {
-      const key = item.menuItemId;
+      const key = item.menuItemId ?? `deleted:${item.menuItemName}`;
       const existing = aggregated.get(key);
       const itemRevenue = Number(item.unitPrice) * item.quantity;
       if (existing) {
