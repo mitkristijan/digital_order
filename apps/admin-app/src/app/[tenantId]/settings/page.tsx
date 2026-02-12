@@ -363,7 +363,7 @@ function BrandingTab({ tenantId }: { tenantId: string }) {
           <ImageUpload
             label="Content Background Image"
             value={form.heroBackgroundImage}
-            onChange={(url) => setForm((f) => ({ ...f, heroBackgroundImage: url }))}
+            onChange={(url) => setForm((f) => ({ ...f, heroBackgroundImage: url ?? '' }))}
           />
         </div>
 
@@ -498,7 +498,7 @@ function ProfileTab({ onSaved }: { onSaved: () => Promise<void> }) {
           <ImageUpload
             label="Profile Picture"
             value={form.avatar}
-            onChange={(url) => setForm((f) => ({ ...f, avatar: url }))}
+            onChange={(url) => setForm((f) => ({ ...f, avatar: url ?? '' }))}
           />
         </div>
 

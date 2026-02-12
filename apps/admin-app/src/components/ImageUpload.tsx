@@ -4,7 +4,7 @@ import React, { useState, useRef } from 'react';
 import { Input, Button } from '@digital-order/ui';
 
 interface ImageUploadProps {
-  value?: string;
+  value?: string | null;
   onChange: (url: string | null) => void;
   label?: string;
   error?: string;
