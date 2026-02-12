@@ -16,42 +16,38 @@ function isOriginAllowed(origin: string | undefined): boolean {
   const allowed = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) || [];
   if (allowed.length === 0) return true;
   if (allowed.includes(origin)) return true;
-  // Vercel production and preview URLs (e.g. ...-xxx-team.vercel.app)
+  // Vercel production and preview URLs (e.g. ...-xxx-team.vercel.app, ...-xxx-mitrovics-projects.vercel.app)
   if (origin.includes('.vercel.app')) return true;
   if (origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')) return true;
   return false;
 }
 
-function getCorsOrigin(): (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => void {
-  return (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) => {
-    callback(null, isOriginAllowed(origin));
-  };
+/** Add CORS headers to response when origin is allowed. Call before sending any response. */
+function addCorsHeaders(req: express.Request, res: express.Response): void {
+  const origin = req.get('Origin');
+  if (origin && isOriginAllowed(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Methods', CORS_METHODS);
+    res.setHeader('Access-Control-Allow-Headers', CORS_ALLOWED_HEADERS.join(','));
+    res.setHeader('Access-Control-Max-Age', '86400');
+  }
 }
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
-    cors: {
-      origin: getCorsOrigin(),
-      credentials: true,
-      allowedHeaders: CORS_ALLOWED_HEADERS,
-      methods: CORS_METHODS.split(','),
-      optionsSuccessStatus: 204,
-    },
+    cors: false, // CORS handled by our middleware below (ensures OPTIONS runs first for Vercel preview + Render cold start)
     bodyParser: true,
     rawBody: true,
   });
 
-  // Handle CORS preflight early so OPTIONS always get correct headers (e.g. from Vercel preview)
+  // CORS middleware - runs first for all requests (critical for Render cold start + Vercel preview)
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    const origin = req.get('Origin');
-    if (req.method === 'OPTIONS' && origin && isOriginAllowed(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Methods', CORS_METHODS);
-      res.setHeader('Access-Control-Allow-Headers', CORS_ALLOWED_HEADERS.join(','));
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-      res.setHeader('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') {
+      addCorsHeaders(req, res);
       return res.status(204).end();
     }
+    addCorsHeaders(req, res);
     next();
   });
 
