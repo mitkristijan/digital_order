@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
@@ -363,6 +363,20 @@ export class MenuService {
         throw new NotFoundException('Menu item not found or access denied');
       }
 
+      // Check for references before delete - avoid Prisma P2003, return clear error
+      const [orderCount, recipeCount] = await Promise.all([
+        this.prisma.orderItem.count({ where: { menuItemId: id } }),
+        this.prisma.recipeItem.count({ where: { menuItemId: id } }),
+      ]);
+      if (orderCount > 0 || recipeCount > 0) {
+        const refs: string[] = [];
+        if (orderCount > 0) refs.push(`${orderCount} order(s)`);
+        if (recipeCount > 0) refs.push('recipe(s)');
+        throw new BadRequestException(
+          `Cannot delete "${item.name}": it is referenced by ${refs.join(' and ')}. Remove or reassign those first.`
+        );
+      }
+
       await this.prisma.menuItem.delete({
         where: { id },
       });
@@ -529,24 +543,28 @@ export class MenuService {
       }));
     }
     if (item.modifierGroups) {
-      base.modifierGroups = item.modifierGroups.map((mg: any) => ({
-        ...mg,
-        modifierGroup: {
-          ...mg.modifierGroup,
-          modifiers: mg.modifierGroup.modifiers.map((m: any) => ({
-            ...m,
-            price: Number(m.price),
-          })),
-        },
-      }));
+      base.modifierGroups = item.modifierGroups
+        .filter((mg: any) => mg?.modifierGroup)
+        .map((mg: any) => ({
+          ...mg,
+          modifierGroup: {
+            ...mg.modifierGroup,
+            modifiers: (mg.modifierGroup.modifiers || []).map((m: any) => ({
+              ...m,
+              price: Number(m.price),
+            })),
+          },
+        }));
     }
     if (item.suggestedItems) {
-      base.suggestedItems = item.suggestedItems.map((si: any) => ({
-        suggestedItem: {
-          ...si.suggestedItem,
-          basePrice: Number(si.suggestedItem?.basePrice ?? 0),
-        },
-      }));
+      base.suggestedItems = item.suggestedItems
+        .filter((si: any) => si?.suggestedItem)
+        .map((si: any) => ({
+          suggestedItem: {
+            ...si.suggestedItem,
+            basePrice: Number(si.suggestedItem?.basePrice ?? 0),
+          },
+        }));
     }
     return base;
   }

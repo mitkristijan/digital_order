@@ -26,13 +26,17 @@ interface MenuItemTableProps {
 export const MenuItemTable: React.FC<MenuItemTableProps> = ({ items, tenantId, viewMode = 'list', onEdit }) => {
   const deleteMutation = useDeleteMenuItem(tenantId);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const handleDelete = async (item: MenuItem) => {
     if (window.confirm(`Are you sure you want to delete "${item.name}"?`)) {
       setDeletingId(item.id);
+      setDeleteError(null);
       try {
         await deleteMutation.mutateAsync(item.id);
-      } catch (error) {
+      } catch (error: any) {
+        const msg = error.response?.data?.message || error.message || 'Failed to delete item';
+        setDeleteError(msg);
         console.error('Failed to delete item:', error);
       } finally {
         setDeletingId(null);
@@ -42,7 +46,17 @@ export const MenuItemTable: React.FC<MenuItemTableProps> = ({ items, tenantId, v
 
   if (viewMode === 'grid') {
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="space-y-4">
+        {deleteError && (
+          <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-start gap-2">
+            <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="text-sm">{deleteError}</span>
+            <button onClick={() => setDeleteError(null)} className="ml-auto text-red-600 hover:text-red-800">×</button>
+          </div>
+        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {items.map((item) => (
           <div
             key={item.id}
@@ -133,12 +147,23 @@ export const MenuItemTable: React.FC<MenuItemTableProps> = ({ items, tenantId, v
             </div>
           </div>
         ))}
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="space-y-4">
+      {deleteError && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg flex items-start gap-2">
+          <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span className="text-sm">{deleteError}</span>
+          <button onClick={() => setDeleteError(null)} className="ml-auto text-red-600 hover:text-red-800">×</button>
+        </div>
+      )}
+      <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead className="bg-gradient-to-r from-slate-50 to-slate-100 border-b border-slate-200">
@@ -251,6 +276,7 @@ export const MenuItemTable: React.FC<MenuItemTableProps> = ({ items, tenantId, v
           </tbody>
         </table>
       </div>
+    </div>
     </div>
   );
 };
