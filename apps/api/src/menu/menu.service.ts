@@ -294,8 +294,8 @@ export class MenuService {
       for (const key of allowedFields) {
         if (rest[key] !== undefined) updateData[key] = rest[key];
       }
-      // Normalize imageUrl: empty string -> null (clearing/removing photo)
-      if ('imageUrl' in updateData && updateData.imageUrl === '') {
+      // Normalize imageUrl: empty string or null -> null (clearing/removing photo)
+      if ('imageUrl' in updateData && (updateData.imageUrl === '' || updateData.imageUrl === null)) {
         updateData.imageUrl = null;
       }
 

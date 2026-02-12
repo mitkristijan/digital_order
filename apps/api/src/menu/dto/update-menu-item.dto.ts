@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsNumber, IsBoolean, IsArray } from 'class-validator';
+import { IsOptional, IsString, IsNumber, IsBoolean, IsArray, ValidateIf } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 /**
@@ -41,7 +41,8 @@ export class UpdateMenuItemDto {
   dietaryTags?: string[];
 
   @IsOptional()
-  @Transform(({ value }) => (value === '' ? null : value))
+  @Transform(({ value }) => (value === '' || value === null ? null : value))
+  @ValidateIf((_o, v) => v != null)
   @IsString()
   imageUrl?: string | null;
 
