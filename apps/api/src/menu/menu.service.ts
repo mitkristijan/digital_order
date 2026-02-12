@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 
@@ -380,17 +381,49 @@ export class MenuService {
         throw new NotFoundException('Menu item not found or access denied');
       }
 
-      // Deletion relies on DB FK: OrderItem.menuItemId has onDelete: SetNull (migration 20250212000000).
-      // Apply that migration first - run `prisma migrate deploy` on production.
-      await this.prisma.menuItem.delete({
-        where: { id },
-      });
-
-      console.log(`✅ Successfully deleted item: ${item.name}`);
-      await this.invalidateMenuCache(tenantId);
+      await this.deleteMenuItemWithMigrationFallback(tenantId, id, item.name);
     } finally {
       // Restore previous tenant ID
       (globalThis as any).currentTenantId = previousTenantId;
+    }
+  }
+
+  /** Delete menu item. If P2003 (FK constraint), run migration SQL then retry. */
+  private async deleteMenuItemWithMigrationFallback(tenantId: string, id: string, itemName: string) {
+    try {
+      await this.prisma.menuItem.delete({ where: { id } });
+      console.log(`✅ Successfully deleted item: ${itemName}`);
+      await this.invalidateMenuCache(tenantId);
+    } catch (err: any) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2003') {
+        console.log(`⚠️  P2003: Running migration to allow menu item deletion with order refs...`);
+        await this.applyOrderItemNullableMigration();
+        await this.prisma.menuItem.delete({ where: { id } });
+        console.log(`✅ Successfully deleted item: ${itemName} (after migration)`);
+        await this.invalidateMenuCache(tenantId);
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  /** Apply migration: OrderItem.menuItemId nullable + ON DELETE SET NULL. Idempotent. */
+  private async applyOrderItemNullableMigration() {
+    const statements = [
+      `ALTER TABLE "OrderItem" DROP CONSTRAINT IF EXISTS "OrderItem_menuItemId_fkey"`,
+      `ALTER TABLE "OrderItem" ALTER COLUMN "menuItemId" DROP NOT NULL`,
+      `ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_menuItemId_fkey" FOREIGN KEY ("menuItemId") REFERENCES "MenuItem"("id") ON DELETE SET NULL ON UPDATE CASCADE`,
+    ];
+    for (const sql of statements) {
+      try {
+        await this.prisma.$executeRawUnsafe(sql);
+      } catch (e: any) {
+        const msg = e?.message || '';
+        if (msg.includes('already nullable') || msg.includes('already exists') || msg.includes('duplicate key')) {
+          continue;
+        }
+        throw e;
+      }
     }
   }
 
