@@ -248,6 +248,19 @@ The app is configured for Upstash resilience: unlimited retries, `enableOfflineQ
 - Check Upstash Dashboard → your database is active
 - Free tier: 10K connections, 500K commands/month
 
+### Cannot delete menu item: "referenced by orders or other records"
+
+Migrations must include the `allow_menu_item_delete_with_order_references` migration. On deploy, `prisma migrate deploy` runs automatically. If this error persists:
+
+1. **Redeploy** — Trigger a new deploy so the latest migration runs.
+2. **Ensure `DIRECT_URL` is set** — Migrations need it (Supabase Session pooler URL).
+3. **Run migration manually** (one-time):
+
+   ```bash
+   cd apps/api
+   DIRECT_URL="your-supabase-url" DATABASE_URL="your-supabase-url" npx prisma migrate deploy
+   ```
+
 ### Cannot find module dist/main.js
 
 The NestJS monorepo build outputs to `dist/apps/api/src/main.js`. Use this start command:

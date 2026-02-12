@@ -240,29 +240,46 @@ export class MenuService {
 
   async getMenuItemById(tenantIdOrSubdomain: string, id: string) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
-    const menuItem = await this.prisma.menuItem.findFirst({
-      where: { id, tenantId },
-      include: {
-        category: true,
-        variants: { where: { active: true } },
-        modifierGroups: {
-          include: {
-            modifierGroup: {
-              include: {
-                modifiers: { where: { active: true } },
-              },
-            },
-          },
-        },
-        suggestedItems: {
-          include: {
-            suggestedItem: {
-              select: { id: true, name: true, basePrice: true, imageUrl: true },
+    const baseInclude = {
+      category: true,
+      variants: { where: { active: true } },
+      modifierGroups: {
+        include: {
+          modifierGroup: {
+            include: {
+              modifiers: { where: { active: true } },
             },
           },
         },
       },
-    });
+    };
+    const fullInclude = {
+      ...baseInclude,
+      suggestedItems: {
+        include: {
+          suggestedItem: {
+            select: { id: true, name: true, basePrice: true, imageUrl: true },
+          },
+        },
+      },
+    };
+
+    let menuItem: any;
+    try {
+      menuItem = await this.prisma.menuItem.findFirst({
+        where: { id, tenantId },
+        include: fullInclude,
+      });
+    } catch (err: any) {
+      if (err?.message?.includes('MenuItemSuggestedItem') || err?.message?.includes('does not exist')) {
+        menuItem = await this.prisma.menuItem.findFirst({
+          where: { id, tenantId },
+          include: baseInclude,
+        });
+      } else {
+        throw err;
+      }
+    }
 
     if (!menuItem) {
       throw new NotFoundException('Menu item not found');
@@ -363,9 +380,13 @@ export class MenuService {
         throw new NotFoundException('Menu item not found or access denied');
       }
 
-      // Allow deletion even when referenced by orders or recipes:
-      // - OrderItem.menuItemId uses onDelete: SetNull (order history preserved via menuItemName)
-      // - RecipeItem uses onDelete: Cascade (recipe links are removed)
+      // Null out order item references first (preserves order history via menuItemName).
+      // Requires migration 20250212000000 - OrderItem.menuItemId must be nullable.
+      await this.prisma.orderItem.updateMany({
+        where: { menuItemId: id },
+        data: { menuItemId: null },
+      });
+      // RecipeItem, MenuItemSuggestedItem, etc. cascade on delete
       await this.prisma.menuItem.delete({
         where: { id },
       });
