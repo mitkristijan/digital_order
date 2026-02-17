@@ -6,6 +6,42 @@ import * as QRCode from 'qrcode';
 export class TableService {
   constructor(private prisma: PrismaService) {}
 
+  private async resolveTenantId(tenantIdOrSlug: string): Promise<string> {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      tenantIdOrSlug
+    );
+    if (isUuid) return tenantIdOrSlug;
+    const tenant = await this.prisma.tenant.findFirst({
+      where: {
+        OR: [{ subdomain: tenantIdOrSlug }, { menuSlug: tenantIdOrSlug }],
+        status: { in: ['ACTIVE', 'TRIAL'] },
+      },
+      select: { id: true },
+    });
+    if (!tenant) {
+      throw new NotFoundException(
+        `Tenant not found for "${tenantIdOrSlug}". Ensure the tenant exists with matching subdomain or menu slug.`
+      );
+    }
+    return tenant.id;
+  }
+
+  private async getTenantSlugForUrl(tenantId: string): Promise<string> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { menuSlug: true, subdomain: true },
+    });
+    if (!tenant) throw new NotFoundException('Tenant not found');
+    return tenant.menuSlug ?? tenant.subdomain;
+  }
+
+  private async generateQrDataUrl(tenantId: string, tableNumber: string): Promise<string> {
+    const slug = await this.getTenantSlugForUrl(tenantId);
+    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const qrData = `${baseUrl.replace(/\/$/, '')}/${slug}/${tableNumber}/menu`;
+    return QRCode.toDataURL(qrData);
+  }
+
   async createTable(tenantId: string, data: any) {
     // Check if table number already exists
     const existing = await this.prisma.table.findFirst({
@@ -16,9 +52,7 @@ export class TableService {
       throw new BadRequestException('Table number already exists');
     }
 
-    // Generate QR code data
-    const qrData = `${process.env.FRONTEND_URL}/${tenantId}/table/${data.tableNumber}`;
-    const qrCode = await QRCode.toDataURL(qrData);
+    const qrCode = await this.generateQrDataUrl(tenantId, data.tableNumber);
 
     const table = await this.prisma.table.create({
       data: {
@@ -52,9 +86,29 @@ export class TableService {
   }
 
   async updateTable(tenantId: string, id: string, data: any) {
-    return this.prisma.table.update({
+    const table = await this.getTableById(tenantId, id);
+    const { qrCode: _qrCode, ...updateData } = data;
+    const updated = await this.prisma.table.update({
       where: { id },
-      data,
+      data: updateData,
+    });
+    // Regenerate QR when table number changes
+    if (data.tableNumber && data.tableNumber !== table.tableNumber) {
+      const qrCode = await this.generateQrDataUrl(tenantId, data.tableNumber);
+      return this.prisma.table.update({
+        where: { id },
+        data: { qrCode },
+      });
+    }
+    return updated;
+  }
+
+  async regenerateQrCode(tenantId: string, tableId: string) {
+    const table = await this.getTableById(tenantId, tableId);
+    const qrCode = await this.generateQrDataUrl(tenantId, table.tableNumber);
+    return this.prisma.table.update({
+      where: { id: tableId },
+      data: { qrCode },
     });
   }
 
@@ -74,7 +128,8 @@ export class TableService {
     });
   }
 
-  async getTableByNumber(tenantId: string, tableNumber: string) {
+  async getTableByNumber(tenantIdOrSlug: string, tableNumber: string) {
+    const tenantId = await this.resolveTenantId(tenantIdOrSlug);
     const table = await this.prisma.table.findFirst({
       where: { tenantId, tableNumber },
     });

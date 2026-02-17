@@ -11,12 +11,12 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
 
   async onModuleInit() {
     await this.$connect();
-    
+
     // Multi-tenant middleware - automatically filter by tenant
     this.$use(async (params, next) => {
       // Get tenant ID from context (set by TenantMiddleware)
       const tenantId = (globalThis as any).currentTenantId;
-      
+
       if (tenantId && params.model && this.isMultiTenantModel(params.model)) {
         // Add tenant filter to queries
         if (params.action === 'findMany' || params.action === 'findFirst') {
@@ -43,7 +43,7 @@ export class PrismaService extends PrismaClient implements OnModuleInit, OnModul
           }
         }
       }
-      
+
       return next(params);
     });
   }

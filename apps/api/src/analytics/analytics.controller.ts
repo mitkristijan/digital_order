@@ -21,7 +21,7 @@ export class AnalyticsController {
   async getDashboardMetrics(
     @CurrentTenant() tenantId: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
@@ -34,7 +34,7 @@ export class AnalyticsController {
     @CurrentTenant() tenantId: string,
     @Query('limit') limit?: number,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
@@ -59,7 +59,7 @@ export class AnalyticsController {
   async getPaymentMethodBreakdown(
     @CurrentTenant() tenantId: string,
     @Query('startDate') startDate?: string,
-    @Query('endDate') endDate?: string,
+    @Query('endDate') endDate?: string
   ) {
     const start = startDate ? new Date(startDate) : undefined;
     const end = endDate ? new Date(endDate) : undefined;
@@ -79,10 +79,11 @@ export class AnalyticsController {
     @Query('tenantId') queryTenantId: string,
     @Query('period') period?: 'day' | 'week' | 'month' | 'year' | 'all',
     @Query('skip') skip?: number,
-    @Query('take') take?: number,
+    @Query('take') take?: number
   ) {
     const effectiveTenantId = tenantId || queryTenantId;
-    const validPeriod = period && ['day', 'week', 'month', 'year', 'all'].includes(period) ? period : 'all';
+    const validPeriod =
+      period && ['day', 'week', 'month', 'year', 'all'].includes(period) ? period : 'all';
     return this.analyticsService.getOrdersWithDateRange(effectiveTenantId, validPeriod, skip, take);
   }
 }

@@ -13,7 +13,10 @@ const CORS_METHODS = 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS';
 
 function isOriginAllowed(origin: string | undefined): boolean {
   if (!origin) return true;
-  const allowed = process.env.CORS_ORIGIN?.split(',').map((o) => o.trim()).filter(Boolean) || [];
+  const allowed =
+    process.env.CORS_ORIGIN?.split(',')
+      .map(o => o.trim())
+      .filter(Boolean) || [];
   if (allowed.length === 0) return true;
   if (allowed.includes(origin)) return true;
   // Vercel production and preview URLs (e.g. ...-xxx-team.vercel.app, ...-xxx-mitrovics-projects.vercel.app)

@@ -36,12 +36,22 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState('');
   const [specialRequests, setSpecialRequests] = useState('');
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const [tableRequiredFromCart, setTableRequiredFromCart] = useState(false);
+
+  useEffect(() => {
+    if (tableNumber) setTableRequiredFromCart(true);
+  }, [tableNumber]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (items.length === 0) {
       alert('Your cart is empty');
+      return;
+    }
+
+    if (tableRequiredFromCart && !tableNumber?.trim()) {
+      alert('Table number is required. Please go back and scan the table QR code to order.');
       return;
     }
 

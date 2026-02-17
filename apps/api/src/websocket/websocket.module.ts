@@ -14,4 +14,3 @@ import { WebsocketGateway } from './websocket.gateway';
   exports: [WebsocketGateway],
 })
 export class WebsocketModule {}
-

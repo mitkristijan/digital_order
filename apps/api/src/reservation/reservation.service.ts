@@ -58,7 +58,7 @@ export class ReservationService {
     status?: string,
     date?: Date,
     skip: number = 0,
-    take: number = 20,
+    take: number = 20
   ) {
     const where: any = { tenantId };
     if (status) where.status = status;

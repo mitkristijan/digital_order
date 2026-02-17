@@ -10,7 +10,7 @@ export class OrderService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
-    private websocketGateway: WebsocketGateway,
+    private websocketGateway: WebsocketGateway
   ) {}
 
   async createOrder(tenantIdOrSubdomain: string, dto: CreateOrderRequest, customerId?: string) {
@@ -119,7 +119,7 @@ export class OrderService {
     status?: OrderStatus,
     orderType?: string,
     skip?: number,
-    take?: number,
+    take?: number
   ) {
     const where: any = { tenantId };
     if (status) where.status = status;
@@ -245,7 +245,11 @@ export class OrderService {
       throw new NotFoundException('Order not found');
     }
 
-    if (![OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT, OrderStatus.CONFIRMED].includes(order.status as OrderStatus)) {
+    if (
+      ![OrderStatus.PENDING, OrderStatus.PENDING_PAYMENT, OrderStatus.CONFIRMED].includes(
+        order.status as OrderStatus
+      )
+    ) {
       throw new BadRequestException('Order cannot be cancelled in current status');
     }
 
@@ -258,7 +262,9 @@ export class OrderService {
   // ========== UTILITIES ==========
 
   private async resolveTenantId(tenantIdOrSubdomain: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantIdOrSubdomain);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      tenantIdOrSubdomain
+    );
     if (isUuid) return tenantIdOrSubdomain;
     const tenant = await this.prisma.tenant.findFirst({
       where: {
@@ -269,7 +275,7 @@ export class OrderService {
     });
     if (!tenant) {
       throw new NotFoundException(
-        `Tenant not found for "${tenantIdOrSubdomain}". Ensure the tenant exists with matching subdomain or menu slug.`,
+        `Tenant not found for "${tenantIdOrSubdomain}". Ensure the tenant exists with matching subdomain or menu slug.`
       );
     }
     return tenant.id;

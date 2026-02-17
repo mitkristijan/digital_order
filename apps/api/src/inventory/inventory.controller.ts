@@ -29,7 +29,7 @@ export class InventoryController {
   @ApiOperation({ summary: 'Get all inventory items' })
   async getInventoryItems(
     @CurrentTenant() tenantId: string,
-    @Query('lowStockOnly') lowStockOnly?: boolean,
+    @Query('lowStockOnly') lowStockOnly?: boolean
   ) {
     return this.inventoryService.getInventoryItems(tenantId, lowStockOnly);
   }
@@ -47,7 +47,7 @@ export class InventoryController {
   async updateInventoryItem(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body() data: any,
+    @Body() data: any
   ) {
     return this.inventoryService.updateInventoryItem(tenantId, id, data);
   }
@@ -76,7 +76,7 @@ export class InventoryController {
     @CurrentTenant() tenantId: string,
     @Query('inventoryItemId') inventoryItemId?: string,
     @Query('skip') skip?: number,
-    @Query('take') take?: number,
+    @Query('take') take?: number
   ) {
     return this.inventoryService.getStockMovements(tenantId, inventoryItemId, skip, take);
   }

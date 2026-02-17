@@ -1,8 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
 import Redis from 'ioredis';
+import * as QRCode from 'qrcode';
 
 const prisma = new PrismaClient();
+
+async function generateTableQrCode(tenantSlug: string, tableNumber: string): Promise<string> {
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+  const qrData = `${baseUrl.replace(/\/$/, '')}/${tenantSlug}/${tableNumber}/menu`;
+  return QRCode.toDataURL(qrData);
+}
 
 async function main() {
   console.log('🌱 Starting database seeding...');
@@ -161,16 +168,21 @@ async function main() {
   });
 
   await prisma.table.deleteMany({ where: { tenantId: testeraTenant.id } });
-  await prisma.table.createMany({
-    data: Array.from({ length: 5 }, (_, i) => ({
-      tenantId: testeraTenant.id,
-      tableNumber: `${i + 1}`,
-      capacity: 4,
-      location: 'Main',
-      qrCode: `QR-testera-${i + 1}`,
-      status: 'AVAILABLE',
-    })),
-  });
+  const testeraSlug = testeraTenant.menuSlug ?? testeraTenant.subdomain;
+  for (let i = 0; i < 5; i++) {
+    const tableNumber = `${i + 1}`;
+    const qrCode = await generateTableQrCode(testeraSlug, tableNumber);
+    await prisma.table.create({
+      data: {
+        tenantId: testeraTenant.id,
+        tableNumber,
+        capacity: 4,
+        location: 'Main',
+        qrCode,
+        status: 'AVAILABLE',
+      },
+    });
+  }
 
   // Grant super admin access to demo tenant
   await prisma.tenantAccess.upsert({
@@ -311,16 +323,21 @@ async function main() {
 
   // Create Tables (clear existing to avoid duplicate qrCode)
   await prisma.table.deleteMany({ where: { tenantId: demoTenant.id } });
-  await prisma.table.createMany({
-    data: Array.from({ length: 10 }, (_, i) => ({
-      tenantId: demoTenant.id,
-      tableNumber: `T${i + 1}`,
-      capacity: i % 3 === 0 ? 4 : i % 2 === 0 ? 2 : 6,
-      location: i < 5 ? 'Main Dining' : 'Patio',
-      qrCode: `QR-${demoTenant.subdomain}-T${i + 1}`,
-      status: 'AVAILABLE',
-    })),
-  });
+  const demoTenantSlug = demoTenant.menuSlug ?? demoTenant.subdomain;
+  for (let i = 0; i < 10; i++) {
+    const tableNumber = `T${i + 1}`;
+    const qrCode = await generateTableQrCode(demoTenantSlug, tableNumber);
+    await prisma.table.create({
+      data: {
+        tenantId: demoTenant.id,
+        tableNumber,
+        capacity: i % 3 === 0 ? 4 : i % 2 === 0 ? 2 : 6,
+        location: i < 5 ? 'Main Dining' : 'Patio',
+        qrCode,
+        status: 'AVAILABLE',
+      },
+    });
+  }
 
   console.log('✅ Created tables');
 

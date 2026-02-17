@@ -16,12 +16,12 @@ export class RecommendationService {
 
   async getSuggestions(
     tenantId: string,
-    cartItems: Array<{ menuItemId: string; quantity: number }>,
+    cartItems: Array<{ menuItemId: string; quantity: number }>
   ): Promise<RecommendationItem[]> {
     const recommendations: RecommendationItem[] = [];
 
     // Get menu items in cart
-    const menuItemIds = cartItems.map((item) => item.menuItemId);
+    const menuItemIds = cartItems.map(item => item.menuItemId);
     const cartMenuItems = await this.prisma.menuItem.findMany({
       where: {
         id: { in: menuItemIds },
@@ -36,13 +36,9 @@ export class RecommendationService {
 
     // Strategy 1: Size Upgrades
     for (const cartItem of cartMenuItems) {
-      const hasSmallVariant = cartItem.variants.some((v) =>
-        v.name.toLowerCase().includes('small'),
-      );
+      const hasSmallVariant = cartItem.variants.some(v => v.name.toLowerCase().includes('small'));
       if (hasSmallVariant) {
-        const largeVariant = cartItem.variants.find((v) =>
-          v.name.toLowerCase().includes('large'),
-        );
+        const largeVariant = cartItem.variants.find(v => v.name.toLowerCase().includes('large'));
         if (largeVariant && largeVariant.active) {
           recommendations.push({
             menuItemId: cartItem.id,
@@ -57,11 +53,11 @@ export class RecommendationService {
     }
 
     // Strategy 2: Complementary Items
-    const categoryIds = cartMenuItems.map((item) => item.categoryId);
+    const _categoryIds = cartMenuItems.map(item => item.categoryId);
     const hasCoffee = cartMenuItems.some(
-      (item) =>
+      item =>
         item.category.name.toLowerCase().includes('coffee') ||
-        item.category.name.toLowerCase().includes('drink'),
+        item.category.name.toLowerCase().includes('drink')
     );
 
     if (hasCoffee) {
@@ -112,13 +108,13 @@ export class RecommendationService {
 
     const popularMenuItems = await this.prisma.menuItem.findMany({
       where: {
-        id: { in: popularItems.map((p) => p.menuItemId) },
+        id: { in: popularItems.map(p => p.menuItemId) },
         availability: true,
       },
     });
 
     for (const item of popularMenuItems) {
-      if (!recommendations.find((r) => r.menuItemId === item.id)) {
+      if (!recommendations.find(r => r.menuItemId === item.id)) {
         recommendations.push({
           menuItemId: item.id,
           name: item.name,

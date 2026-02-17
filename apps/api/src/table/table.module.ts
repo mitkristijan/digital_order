@@ -8,4 +8,3 @@ import { TableController } from './table.controller';
   exports: [TableService],
 })
 export class TableModule {}
-

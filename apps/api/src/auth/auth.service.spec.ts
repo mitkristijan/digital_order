@@ -8,9 +8,9 @@ import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
   let service: AuthService;
-  let prisma: PrismaService;
-  let jwtService: JwtService;
-  let redisService: RedisService;
+  let _prisma: PrismaService;
+  let _jwtService: JwtService;
+  let _redisService: RedisService;
 
   const mockPrismaService = {
     user: {
@@ -57,9 +57,9 @@ describe('AuthService', () => {
     }).compile();
 
     service = module.get<AuthService>(AuthService);
-    prisma = module.get<PrismaService>(PrismaService);
-    jwtService = module.get<JwtService>(JwtService);
-    redisService = module.get<RedisService>(RedisService);
+    _prisma = module.get<PrismaService>(PrismaService);
+    _jwtService = module.get<JwtService>(JwtService);
+    _redisService = module.get<RedisService>(RedisService);
   });
 
   afterEach(() => {

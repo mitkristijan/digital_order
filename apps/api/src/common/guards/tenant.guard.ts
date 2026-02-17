@@ -17,7 +17,9 @@ export class TenantGuard implements CanActivate {
         tenantId = request.query.tenantId;
       }
       if (tenantId) {
-        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantId);
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          tenantId
+        );
         if (!isUuid) {
           const tenant = await this.prisma.tenant.findFirst({
             where: { OR: [{ subdomain: tenantId }, { menuSlug: tenantId }], status: 'ACTIVE' },

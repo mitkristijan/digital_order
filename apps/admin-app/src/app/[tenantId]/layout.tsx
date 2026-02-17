@@ -56,6 +56,16 @@ export default function TenantLayout({
                   Menu
                 </Link>
                 <Link
+                  href={`${base}/tables`}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    pathname === `${base}/tables`
+                      ? 'bg-brand-50 text-brand-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  Tables
+                </Link>
+                <Link
                   href={`${base}/analytics`}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     pathname === `${base}/analytics`

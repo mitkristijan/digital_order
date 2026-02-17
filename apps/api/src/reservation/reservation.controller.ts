@@ -19,7 +19,7 @@ export class ReservationController {
   async createReservation(
     @Query('tenantId') tenantId: string,
     @Body() dto: CreateReservationRequest,
-    @CurrentUserId() customerId?: string,
+    @CurrentUserId() customerId?: string
   ) {
     return this.reservationService.createReservation(tenantId, dto, customerId);
   }
@@ -34,7 +34,7 @@ export class ReservationController {
     @Query('status') status?: string,
     @Query('date') date?: string,
     @Query('skip') skip?: number,
-    @Query('take') take?: number,
+    @Query('take') take?: number
   ) {
     const dateObj = date ? new Date(date) : undefined;
     return this.reservationService.getReservations(tenantId, status, dateObj, skip, take);

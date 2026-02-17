@@ -1,8 +1,12 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { CreateTenantRequest, Tenant } from '@digital-order/types';
-import { slugify } from '@digital-order/utils';
 import * as crypto from 'crypto';
 
 const REDIS_GET_TIMEOUT_MS = 4000;
@@ -11,7 +15,7 @@ const REDIS_GET_TIMEOUT_MS = 4000;
 export class TenantService {
   constructor(
     private prisma: PrismaService,
-    private redis: RedisService,
+    private redis: RedisService
   ) {}
 
   private async redisGetWithTimeout(key: string): Promise<string | null> {
@@ -26,7 +30,7 @@ export class TenantService {
   }
 
   private redisSetNoWait(key: string, value: string, ttl?: number): void {
-    this.redis.set(key, value, ttl).catch((err) => console.warn('Redis set failed:', err?.message));
+    this.redis.set(key, value, ttl).catch(err => console.warn('Redis set failed:', err?.message));
   }
 
   async create(dto: CreateTenantRequest, ownerId: string): Promise<Tenant> {
@@ -134,7 +138,9 @@ export class TenantService {
   }
 
   private async resolveTenantId(tenantIdOrSubdomainOrSlug: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantIdOrSubdomainOrSlug);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      tenantIdOrSubdomainOrSlug
+    );
     if (isUuid) return tenantIdOrSubdomainOrSlug;
     let tenant = await this.prisma.tenant.findUnique({
       where: { subdomain: tenantIdOrSubdomainOrSlug },
@@ -203,7 +209,7 @@ export class TenantService {
       heroBackgroundImage: string | null;
       logo: string | null;
       favicon: string | null;
-    }>,
+    }>
   ): Promise<Tenant> {
     const resolvedId = await this.resolveTenantId(tenantIdOrSubdomain);
     const tenant = await this.prisma.tenant.findUnique({
@@ -249,14 +255,19 @@ export class TenantService {
   }
 
   /** Generate a new menu slug for the tenant. Old link stops working. */
-  async regenerateMenuSlug(tenantIdOrSubdomain: string, userId: string): Promise<{ menuSlug: string }> {
+  async regenerateMenuSlug(
+    tenantIdOrSubdomain: string,
+    userId: string
+  ): Promise<{ menuSlug: string }> {
     const resolvedId = await this.resolveTenantId(tenantIdOrSubdomain);
 
     const access = await this.prisma.tenantAccess.findUnique({
       where: { userId_tenantId: { userId, tenantId: resolvedId } },
     });
     if (!access || (access.role !== 'TENANT_ADMIN' && access.role !== 'SUPER_ADMIN')) {
-      throw new ForbiddenException('You do not have permission to regenerate this tenant\'s menu link');
+      throw new ForbiddenException(
+        "You do not have permission to regenerate this tenant's menu link"
+      );
     }
 
     const tenant = await this.prisma.tenant.findUnique({

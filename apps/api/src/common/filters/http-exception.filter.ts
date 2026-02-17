@@ -1,4 +1,11 @@
-import { ExceptionFilter, Catch, ArgumentsHost, HttpException, HttpStatus, Logger } from '@nestjs/common';
+import {
+  ExceptionFilter,
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
 import { Request, Response } from 'express';
 import { Prisma } from '@prisma/client';
 
@@ -30,7 +37,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
       message = exception.getResponse();
     } else if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       if (exception.code === 'P2025') message = 'Record not found';
-      else if (exception.code === 'P2003') message = 'Cannot delete: this item is referenced by orders or other records';
+      else if (exception.code === 'P2003')
+        message = 'Cannot delete: this item is referenced by orders or other records';
       else message = exception.message;
     } else if (exception instanceof Error) {
       message = exception.message;
@@ -40,7 +48,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     const errorMessage = typeof message === 'object' ? (message as any).message : message;
     const stack = exception instanceof Error ? exception.stack : undefined;
-    const prismaCode = exception instanceof Prisma.PrismaClientKnownRequestError ? exception.code : undefined;
+    const prismaCode =
+      exception instanceof Prisma.PrismaClientKnownRequestError ? exception.code : undefined;
 
     // Log 500 errors
     if (status >= 500) {

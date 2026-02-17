@@ -19,7 +19,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     }
 
     const result = await super.canActivate(context);
-    
+
     if (result) {
       const request = context.switchToHttp().getRequest();
       // Set tenantId on request for use by TenantGuard and @CurrentTenant decorator

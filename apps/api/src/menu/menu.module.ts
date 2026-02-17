@@ -8,4 +8,3 @@ import { MenuController } from './menu.controller';
   exports: [MenuService],
 })
 export class MenuModule {}
-

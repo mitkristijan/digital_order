@@ -10,4 +10,3 @@ import { WebsocketModule } from '../websocket/websocket.module';
   exports: [OrderService],
 })
 export class OrderModule {}
-

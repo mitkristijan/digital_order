@@ -30,14 +30,18 @@ export class RedisService implements OnModuleInit {
   async onModuleInit() {
     const url = process.env.REDIS_URL || 'redis://localhost:6379';
     const fromEnv = !!process.env.REDIS_URL;
-    const safeHint = url.startsWith('rediss://') ? 'rediss://...' : url.startsWith('redis://') ? url.replace(/:[^:@]+@/, ':****@').slice(0, 40) : 'host/port';
+    const safeHint = url.startsWith('rediss://')
+      ? 'rediss://...'
+      : url.startsWith('redis://')
+        ? url.replace(/:[^:@]+@/, ':****@').slice(0, 40)
+        : 'host/port';
     console.log(`Redis: REDIS_URL from env=${fromEnv}, connecting to ${safeHint}`);
 
     const options = getRedisOptions();
     this.client = new Redis(options as object);
 
     let connectedOnce = false;
-    this.client.on('error', (err) => {
+    this.client.on('error', err => {
       console.error('Redis Client Error', err);
     });
 

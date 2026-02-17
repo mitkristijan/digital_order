@@ -58,7 +58,7 @@ export class MenuController {
   async updateCategory(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body() data: any,
+    @Body() data: any
   ) {
     return this.menuService.updateCategory(tenantId, id, data);
   }
@@ -83,7 +83,7 @@ export class MenuController {
   async createMenuItem(
     @CurrentTenant() tenantId: string,
     @Query('tenantId') queryTenantId: string,
-    @Body() data: any,
+    @Body() data: any
   ) {
     // Use query tenantId if currentTenant is null (for SUPER_ADMIN)
     const effectiveTenantId = tenantId || queryTenantId;
@@ -95,7 +95,7 @@ export class MenuController {
   @ApiOperation({ summary: 'Get all menu items' })
   async getMenuItems(
     @Query('tenantId') tenantId: string,
-    @Query('categoryId') categoryId?: string,
+    @Query('categoryId') categoryId?: string
   ) {
     return this.menuService.getMenuItems(tenantId, categoryId);
   }
@@ -116,7 +116,7 @@ export class MenuController {
     @CurrentTenant() tenantId: string,
     @Query('tenantId') queryTenantId: string,
     @Param('id') id: string,
-    @Body() data: UpdateMenuItemDto,
+    @Body() data: UpdateMenuItemDto
   ) {
     const effectiveTenantId = tenantId || queryTenantId;
     return this.menuService.updateMenuItem(effectiveTenantId, id, data);
@@ -131,7 +131,7 @@ export class MenuController {
     @CurrentTenant() tenantId: string,
     @Query('tenantId') queryTenantId: string,
     @Param('id') id: string,
-    @Body('availability') availability: boolean,
+    @Body('availability') availability: boolean
   ) {
     const effectiveTenantId = tenantId || queryTenantId;
     return this.menuService.toggleMenuItemAvailability(effectiveTenantId, id, availability);
@@ -145,7 +145,7 @@ export class MenuController {
   async deleteMenuItem(
     @CurrentTenant() tenantId: string,
     @Query('tenantId') queryTenantId: string,
-    @Param('id') id: string,
+    @Param('id') id: string
   ) {
     const effectiveTenantId = tenantId || queryTenantId;
     await this.menuService.deleteMenuItem(effectiveTenantId, id);

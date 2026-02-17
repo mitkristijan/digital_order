@@ -16,7 +16,12 @@ import { RolesGuard } from '../common/guards/roles.guard';
 import { Roles, Public } from '../common/decorators/roles.decorator';
 import { CurrentTenant, CurrentUserId } from '../common/decorators/request.decorators';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { UserRole, CreateOrderRequest, UpdateOrderStatusRequest, OrderStatus } from '@digital-order/types';
+import {
+  UserRole,
+  CreateOrderRequest,
+  UpdateOrderStatusRequest,
+  OrderStatus,
+} from '@digital-order/types';
 
 @ApiTags('orders')
 @Controller('orders')
@@ -29,11 +34,11 @@ export class OrderController {
   async createOrder(
     @Body() dto: CreateOrderRequest,
     @Query('tenantId') tenantId: string,
-    @CurrentUserId() customerId?: string,
+    @CurrentUserId() customerId?: string
   ) {
     if (!tenantId || typeof tenantId !== 'string' || !tenantId.trim()) {
       throw new BadRequestException(
-        'tenantId query parameter is required (tenant subdomain or menu slug)',
+        'tenantId query parameter is required (tenant subdomain or menu slug)'
       );
     }
     return this.orderService.createOrder(tenantId.trim(), dto, customerId);
@@ -49,7 +54,7 @@ export class OrderController {
     @Query('status') status?: OrderStatus,
     @Query('orderType') orderType?: string,
     @Query('skip') skip?: number,
-    @Query('take') take?: number,
+    @Query('take') take?: number
   ) {
     return this.orderService.getOrders(tenantId, status, orderType, skip, take);
   }
@@ -61,7 +66,7 @@ export class OrderController {
   async getMyOrders(
     @CurrentUserId() customerId: string,
     @Query('skip') skip?: number,
-    @Query('take') take?: number,
+    @Query('take') take?: number
   ) {
     return this.orderService.getCustomerOrders(customerId, skip, take);
   }
@@ -79,11 +84,11 @@ export class OrderController {
   @ApiOperation({ summary: 'Get order by order number (for tracking)' })
   async getOrderByNumber(
     @Query('tenantId') tenantId: string,
-    @Param('orderNumber') orderNumber: string,
+    @Param('orderNumber') orderNumber: string
   ) {
     if (!tenantId || typeof tenantId !== 'string' || !tenantId.trim()) {
       throw new BadRequestException(
-        'tenantId query parameter is required (tenant subdomain or menu slug)',
+        'tenantId query parameter is required (tenant subdomain or menu slug)'
       );
     }
     return this.orderService.getOrderByNumber(tenantId.trim(), orderNumber);
@@ -97,7 +102,7 @@ export class OrderController {
   async updateOrderStatus(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body() dto: UpdateOrderStatusRequest,
+    @Body() dto: UpdateOrderStatusRequest
   ) {
     return this.orderService.updateOrderStatus(tenantId, id, dto);
   }
@@ -109,7 +114,7 @@ export class OrderController {
   async cancelOrder(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body('reason') reason: string,
+    @Body('reason') reason: string
   ) {
     return this.orderService.cancelOrder(tenantId, id, reason);
   }

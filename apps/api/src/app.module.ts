@@ -45,7 +45,13 @@ import { TenantGuard } from './common/guards/tenant.guard';
           retryStrategy: (times: number) => Math.min(times * 100, 3000),
           ...(isUpstash && { tls: {} }),
         };
-        return url ? { ...opts, url } : { ...opts, host: process.env.REDIS_HOST || 'localhost', port: parseInt(process.env.REDIS_PORT || '6379', 10) };
+        return url
+          ? { ...opts, url }
+          : {
+              ...opts,
+              host: process.env.REDIS_HOST || 'localhost',
+              port: parseInt(process.env.REDIS_PORT || '6379', 10),
+            };
       })(),
     }),
     PrismaModule,
@@ -69,8 +75,6 @@ import { TenantGuard } from './common/guards/tenant.guard';
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(TenantMiddleware)
-      .forRoutes('*'); // Apply to all routes
+    consumer.apply(TenantMiddleware).forRoutes('*'); // Apply to all routes
   }
 }

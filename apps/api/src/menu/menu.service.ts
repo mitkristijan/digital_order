@@ -12,7 +12,7 @@ const REDIS_INVALIDATE_TIMEOUT_MS = 3000;
 export class MenuService {
   constructor(
     private prisma: PrismaService,
-    private redis: RedisService,
+    private redis: RedisService
   ) {}
 
   private async redisGetWithTimeout(key: string): Promise<string | null> {
@@ -20,7 +20,7 @@ export class MenuService {
       return await Promise.race([
         this.redis.get(key),
         new Promise<null>((_, reject) =>
-          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS),
+          setTimeout(() => reject(new Error('Redis get timeout')), REDIS_GET_TIMEOUT_MS)
         ),
       ]);
     } catch {
@@ -29,7 +29,7 @@ export class MenuService {
   }
 
   private redisSetNoWait(key: string, value: string, ttl?: number): void {
-    this.redis.set(key, value, ttl).catch((err) => console.warn('Redis set failed:', err?.message));
+    this.redis.set(key, value, ttl).catch(err => console.warn('Redis set failed:', err?.message));
   }
 
   // ========== CATEGORIES ==========
@@ -50,7 +50,7 @@ export class MenuService {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     const cacheKey = `tenant:${tenantId}:categories`;
     const cached = await this.redisGetWithTimeout(cacheKey);
-    
+
     if (cached) {
       return JSON.parse(cached);
     }
@@ -67,9 +67,9 @@ export class MenuService {
     });
 
     // Convert Decimal types to numbers before caching
-    const serializedCategories = categories.map((cat) => ({
+    const serializedCategories = categories.map(cat => ({
       ...cat,
-      menuItems: cat.menuItems.map((item) => ({
+      menuItems: cat.menuItems.map(item => ({
         ...item,
         basePrice: Number(item.basePrice),
       })),
@@ -126,7 +126,11 @@ export class MenuService {
 
     // Keep imageUrl in sync with imageUrls[0] for backward compatibility
     const createData = { ...itemData, tenantId };
-    if (createData.imageUrls && Array.isArray(createData.imageUrls) && createData.imageUrls.length > 0) {
+    if (
+      createData.imageUrls &&
+      Array.isArray(createData.imageUrls) &&
+      createData.imageUrls.length > 0
+    ) {
       createData.imageUrl = createData.imageUrls[0];
     }
 
@@ -157,7 +161,10 @@ export class MenuService {
           skipDuplicates: true,
         });
       } catch (err) {
-        console.warn('MenuItemSuggestedItem table unavailable, skipping suggestions:', (err as Error)?.message);
+        console.warn(
+          'MenuItemSuggestedItem table unavailable, skipping suggestions:',
+          (err as Error)?.message
+        );
       }
     }
 
@@ -172,8 +179,10 @@ export class MenuService {
       ? `tenant:${tenantId}:menu:category:${categoryId}`
       : `tenant:${tenantId}:menu:all`;
 
-    console.log(`📥 Getting menu items for tenant: ${tenantIdOrSubdomain} (UUID: ${tenantId}), cacheKey: ${cacheKey}`);
-    
+    console.log(
+      `📥 Getting menu items for tenant: ${tenantIdOrSubdomain} (UUID: ${tenantId}), cacheKey: ${cacheKey}`
+    );
+
     const cached = await this.redisGetWithTimeout(cacheKey);
     if (cached) {
       console.log(`✅ Cache HIT for ${cacheKey}`);
@@ -181,11 +190,11 @@ export class MenuService {
     }
 
     console.log(`❌ Cache MISS for ${cacheKey}, querying database...`);
-    
+
     // Temporarily disable middleware
     const previousTenantId = (globalThis as any).currentTenantId;
     (globalThis as any).currentTenantId = undefined;
-    
+
     try {
       const baseInclude = {
         category: true,
@@ -214,7 +223,10 @@ export class MenuService {
           orderBy: { createdAt: 'desc' },
         });
       } catch (err: any) {
-        if (err?.message?.includes('MenuItemSuggestedItem') || err?.message?.includes('does not exist')) {
+        if (
+          err?.message?.includes('MenuItemSuggestedItem') ||
+          err?.message?.includes('does not exist')
+        ) {
           menuItems = await this.prisma.menuItem.findMany({
             where: {
               tenantId,
@@ -232,9 +244,7 @@ export class MenuService {
       console.log(`📊 Found ${menuItems.length} items in database for tenant ${tenantId}`);
 
       // Convert Decimal types to numbers before caching
-      const serializedItems = menuItems.map((item) =>
-        this.serializeMenuItem(item),
-      );
+      const serializedItems = menuItems.map(item => this.serializeMenuItem(item));
 
       this.redisSetNoWait(cacheKey, JSON.stringify(serializedItems), 300);
       console.log(`💾 Caching ${serializedItems.length} items with key: ${cacheKey}`);
@@ -277,7 +287,10 @@ export class MenuService {
         include: fullInclude,
       });
     } catch (err: any) {
-      if (err?.message?.includes('MenuItemSuggestedItem') || err?.message?.includes('does not exist')) {
+      if (
+        err?.message?.includes('MenuItemSuggestedItem') ||
+        err?.message?.includes('does not exist')
+      ) {
         menuItem = await this.prisma.menuItem.findFirst({
           where: { id, tenantId },
           include: baseInclude,
@@ -296,7 +309,7 @@ export class MenuService {
 
   async updateMenuItem(tenantIdOrSubdomain: string, id: string, data: any) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
-    const { suggestedItemIds, suggestedItems, ...rest } = data;
+    const { suggestedItemIds, suggestedItems: _suggestedItems, ...rest } = data;
 
     // Temporarily disable Prisma middleware to avoid tenant filter overwriting our explicit tenantId
     const previousTenantId = (globalThis as any).currentTenantId;
@@ -313,12 +326,26 @@ export class MenuService {
 
       // Only pass fields that Prisma accepts for MenuItem update
       const updateData: Record<string, any> = {};
-      const allowedFields = ['name', 'description', 'basePrice', 'categoryId', 'prepTime', 'availability', 'allergens', 'dietaryTags', 'imageUrl', 'imageUrls'];
+      const allowedFields = [
+        'name',
+        'description',
+        'basePrice',
+        'categoryId',
+        'prepTime',
+        'availability',
+        'allergens',
+        'dietaryTags',
+        'imageUrl',
+        'imageUrls',
+      ];
       for (const key of allowedFields) {
         if (rest[key] !== undefined) updateData[key] = rest[key];
       }
       // Normalize imageUrl: empty string or null -> null (clearing/removing photo)
-      if ('imageUrl' in updateData && (updateData.imageUrl === '' || updateData.imageUrl === null)) {
+      if (
+        'imageUrl' in updateData &&
+        (updateData.imageUrl === '' || updateData.imageUrl === null)
+      ) {
         updateData.imageUrl = null;
       }
       // Keep imageUrl in sync with imageUrls[0] for backward compatibility
@@ -375,11 +402,11 @@ export class MenuService {
   async deleteMenuItem(tenantIdOrSubdomain: string, id: string) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     console.log(`🗑️  Attempting to delete item: ${id} for tenant: ${tenantId}`);
-    
+
     // Temporarily disable middleware by clearing globalThis
     const previousTenantId = (globalThis as any).currentTenantId;
     (globalThis as any).currentTenantId = undefined;
-    
+
     try {
       // Check if item exists and belongs to tenant
       const item = await this.prisma.menuItem.findFirst({
@@ -401,7 +428,11 @@ export class MenuService {
   }
 
   /** Delete menu item. If P2003 (FK constraint), run migration SQL then retry. */
-  private async deleteMenuItemWithMigrationFallback(tenantId: string, id: string, itemName: string) {
+  private async deleteMenuItemWithMigrationFallback(
+    tenantId: string,
+    id: string,
+    itemName: string
+  ) {
     try {
       await this.prisma.menuItem.delete({ where: { id } });
       console.log(`✅ Successfully deleted item: ${itemName}`);
@@ -431,7 +462,11 @@ export class MenuService {
         await this.prisma.$executeRawUnsafe(sql);
       } catch (e: any) {
         const msg = e?.message || '';
-        if (msg.includes('already nullable') || msg.includes('already exists') || msg.includes('duplicate key')) {
+        if (
+          msg.includes('already nullable') ||
+          msg.includes('already exists') ||
+          msg.includes('duplicate key')
+        ) {
           continue;
         }
         throw e;
@@ -494,7 +529,9 @@ export class MenuService {
   // ========== UTILITIES ==========
 
   private async resolveTenantId(tenantIdOrSubdomain: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantIdOrSubdomain);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      tenantIdOrSubdomain
+    );
     if (isUuid) {
       return tenantIdOrSubdomain;
     }
@@ -553,7 +590,10 @@ export class MenuService {
         },
       });
     } catch (err: any) {
-      if (err?.message?.includes('MenuItemSuggestedItem') || err?.message?.includes('does not exist')) {
+      if (
+        err?.message?.includes('MenuItemSuggestedItem') ||
+        err?.message?.includes('does not exist')
+      ) {
         menu = await this.prisma.category.findMany({
           where: { tenantId, active: true },
           orderBy: { sortOrder: 'asc' },
@@ -570,14 +610,12 @@ export class MenuService {
     }
 
     // Filter out categories with no items (customer should not see empty categories)
-    const menuWithItems = menu.filter((cat) => cat.menuItems.length > 0);
+    const menuWithItems = menu.filter(cat => cat.menuItems.length > 0);
 
     // Convert Decimal types to numbers before caching
-    const serializedMenu = menuWithItems.map((cat) => ({
+    const serializedMenu = menuWithItems.map(cat => ({
       ...cat,
-      menuItems: cat.menuItems.map((item) =>
-        this.serializeMenuItem(item),
-      ),
+      menuItems: cat.menuItems.map(item => this.serializeMenuItem(item)),
     }));
 
     this.redisSetNoWait(cacheKey, JSON.stringify(serializedMenu), 300);
@@ -620,11 +658,12 @@ export class MenuService {
         }));
     }
     // Normalize imageUrls: always return array; merge legacy imageUrl for backward compat
-    const imageUrls = Array.isArray(item.imageUrls) && item.imageUrls.length > 0
-      ? item.imageUrls
-      : item.imageUrl
-        ? [item.imageUrl]
-        : [];
+    const imageUrls =
+      Array.isArray(item.imageUrls) && item.imageUrls.length > 0
+        ? item.imageUrls
+        : item.imageUrl
+          ? [item.imageUrl]
+          : [];
     base.imageUrls = imageUrls;
     return base;
   }
@@ -634,7 +673,9 @@ export class MenuService {
       console.log(`🗑️  Invalidating menu cache for tenant: ${tenantId}`);
       const menuKeys = await this.redis.keys(`tenant:${tenantId}:menu:*`);
       const categoryKeys = await this.redis.keys(`tenant:${tenantId}:categories`);
-      console.log(`   Found ${menuKeys.length} menu keys and ${categoryKeys.length} category keys to delete`);
+      console.log(
+        `   Found ${menuKeys.length} menu keys and ${categoryKeys.length} category keys to delete`
+      );
 
       await this.redis.flushPattern(`tenant:${tenantId}:menu:*`);
       await this.redis.flushPattern(`tenant:${tenantId}:categories`);
@@ -645,11 +686,13 @@ export class MenuService {
     try {
       await Promise.race([
         doInvalidate(),
-        new Promise<void>((resolve) =>
+        new Promise<void>(resolve =>
           setTimeout(() => {
-            console.warn(`Cache invalidation timed out after ${REDIS_INVALIDATE_TIMEOUT_MS}ms - continuing without blocking`);
+            console.warn(
+              `Cache invalidation timed out after ${REDIS_INVALIDATE_TIMEOUT_MS}ms - continuing without blocking`
+            );
             resolve();
-          }, REDIS_INVALIDATE_TIMEOUT_MS),
+          }, REDIS_INVALIDATE_TIMEOUT_MS)
         ),
       ]);
     } catch (err) {

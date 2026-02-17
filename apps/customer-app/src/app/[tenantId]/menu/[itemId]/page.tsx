@@ -170,7 +170,7 @@ export default function MenuItemDetailsPage() {
               role="region"
               aria-label="Menu item photos"
             >
-              {images.map((src, i) => (
+              {images.map((src: string, i: number) => (
                 <div
                   key={i}
                   className="flex-shrink-0 w-full h-full snap-center"
@@ -188,7 +188,7 @@ export default function MenuItemDetailsPage() {
             </div>
             {images.length > 1 && (
               <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
-                {images.map((_, i) => (
+                {images.map((_: string, i: number) => (
                   <button
                     key={i}
                     onClick={() => scrollToIndex(i)}

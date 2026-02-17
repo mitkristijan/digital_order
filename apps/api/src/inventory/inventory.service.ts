@@ -19,7 +19,7 @@ export class InventoryService {
 
   async getInventoryItems(tenantId: string, lowStockOnly?: boolean) {
     const where: any = { tenantId };
-    
+
     if (lowStockOnly) {
       where.currentStock = { lte: this.prisma.inventoryItem.fields.minStock };
     }
@@ -113,7 +113,7 @@ export class InventoryService {
     tenantId: string,
     inventoryItemId?: string,
     skip: number = 0,
-    take: number = 50,
+    take: number = 50
   ) {
     const where: any = { tenantId };
     if (inventoryItemId) where.inventoryItemId = inventoryItemId;
@@ -157,7 +157,7 @@ export class InventoryService {
 
   async calculateMenuItemCost(menuItemId: string) {
     const recipeItems = await this.getRecipeItems(menuItemId);
-    
+
     let totalCost = 0;
     for (const item of recipeItems) {
       const cost = Number(item.inventoryItem.costPerUnit) * Number(item.quantityRequired);
@@ -201,10 +201,10 @@ export class InventoryService {
     for (const orderItem of order.items) {
       if (!orderItem.menuItemId) continue; // Skip deleted menu items (order history preserved via menuItemName)
       const recipeItems = await this.getRecipeItems(orderItem.menuItemId);
-      
+
       for (const recipeItem of recipeItems) {
         const quantityNeeded = Number(recipeItem.quantityRequired) * orderItem.quantity;
-        
+
         await this.recordStockMovement(order.tenantId, {
           inventoryItemId: recipeItem.inventoryItemId,
           type: StockMovementType.OUT,

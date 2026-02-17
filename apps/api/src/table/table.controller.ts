@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Delete, Body, Param, Query, UseGuards, Patch } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Patch,
+} from '@nestjs/common';
 import { TableService } from './table.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { TenantGuard } from '../common/guards/tenant.guard';
@@ -33,7 +44,10 @@ export class TableController {
   @Get('number/:tableNumber')
   @Public()
   @ApiOperation({ summary: 'Get table by number (for QR code scanning)' })
-  async getTableByNumber(@Query('tenantId') tenantId: string, @Param('tableNumber') tableNumber: string) {
+  async getTableByNumber(
+    @Query('tenantId') tenantId: string,
+    @Param('tableNumber') tableNumber: string
+  ) {
     return this.tableService.getTableByNumber(tenantId, tableNumber);
   }
 
@@ -62,9 +76,18 @@ export class TableController {
   async updateTableStatus(
     @CurrentTenant() tenantId: string,
     @Param('id') id: string,
-    @Body() data: { status: string; orderId?: string },
+    @Body() data: { status: string; orderId?: string }
   ) {
     return this.tableService.updateTableStatus(tenantId, id, data.status, data.orderId);
+  }
+
+  @Patch(':id/regenerate-qr')
+  @UseGuards(JwtAuthGuard, TenantGuard, RolesGuard)
+  @Roles(UserRole.TENANT_ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Regenerate QR code for table' })
+  async regenerateQrCode(@CurrentTenant() tenantId: string, @Param('id') id: string) {
+    return this.tableService.regenerateQrCode(tenantId, id);
   }
 
   @Delete(':id')

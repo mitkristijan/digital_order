@@ -16,7 +16,7 @@ export class TenantMiddleware implements NestMiddleware {
       // Could be either UUID or subdomain
       const queryTenantParam = req.query.tenantId as string;
       console.log('[TenantMiddleware] Query tenantId:', queryTenantParam);
-      
+
       if (queryTenantParam) {
         // Check if it's a UUID (contains dashes) or subdomain/slug
         if (queryTenantParam.includes('-') && queryTenantParam.length > 30) {
@@ -24,9 +24,15 @@ export class TenantMiddleware implements NestMiddleware {
           tenantId = queryTenantParam;
         } else {
           // Treat as subdomain or menuSlug, look up the actual tenant ID
-          console.log('[TenantMiddleware] Treating as subdomain/slug, looking up:', queryTenantParam);
+          console.log(
+            '[TenantMiddleware] Treating as subdomain/slug, looking up:',
+            queryTenantParam
+          );
           const tenant = await this.prisma.tenant.findFirst({
-            where: { OR: [{ subdomain: queryTenantParam }, { menuSlug: queryTenantParam }], status: 'ACTIVE' },
+            where: {
+              OR: [{ subdomain: queryTenantParam }, { menuSlug: queryTenantParam }],
+              status: 'ACTIVE',
+            },
             select: { id: true, status: true },
           });
           console.log('[TenantMiddleware] Found tenant:', tenant);
@@ -71,7 +77,7 @@ export class TenantMiddleware implements NestMiddleware {
 
       // Store tenant ID in request for later use
       (req as any).tenantId = tenantId;
-      
+
       // Also store in global context for Prisma middleware
       (globalThis as any).currentTenantId = tenantId;
 

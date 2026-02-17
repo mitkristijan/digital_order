@@ -16,7 +16,10 @@ export const PopularItemsList: React.FC<PopularItemsListProps> = ({ items }) => 
     <div className="bg-white rounded-xl border border-gray-100 p-6 shadow-card">
       <h2 className="text-lg font-semibold text-gray-900 mb-4">Popular Items</h2>
       <div className="space-y-3">
-        {items.map((item, index) => (
+        {items.length === 0 ? (
+          <p className="text-sm text-gray-500 py-4 text-center">No orders in the last 30 days</p>
+        ) : (
+        items.map((item, index) => (
           <div
             key={index}
             className="flex items-center justify-between p-3 rounded-lg bg-gray-50/80 hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-colors"
@@ -32,7 +35,8 @@ export const PopularItemsList: React.FC<PopularItemsListProps> = ({ items }) => 
             </div>
             <p className="font-semibold text-emerald-600">${Number(item.revenue).toFixed(2)}</p>
           </div>
-        ))}
+        ))
+        )}
       </div>
     </div>
   );

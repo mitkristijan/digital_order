@@ -1,3 +1,4 @@
+import * as crypto from 'crypto';
 import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConfigService } from '@nestjs/config';
@@ -9,16 +10,6 @@ import {
 } from '@digital-order/types';
 import { generateInvoiceNumber } from '@digital-order/utils';
 
-// Paddle SDK types (we'll use REST API directly)
-interface PaddleTransaction {
-  id: string;
-  status: string;
-  customer_id: string;
-  amount: string;
-  currency: string;
-  custom_data?: any;
-}
-
 @Injectable()
 export class PaymentService {
   private paddleApiKey: string;
@@ -27,13 +18,16 @@ export class PaymentService {
 
   constructor(
     private prisma: PrismaService,
-    private config: ConfigService,
+    private config: ConfigService
   ) {
     this.paddleApiKey = this.config.get('PADDLE_API_KEY') || '';
-    this.paddleEnvironment = (this.config.get('PADDLE_ENVIRONMENT') || 'sandbox') as 'sandbox' | 'production';
-    this.paddleApiUrl = this.paddleEnvironment === 'production' 
-      ? 'https://api.paddle.com' 
-      : 'https://sandbox-api.paddle.com';
+    this.paddleEnvironment = (this.config.get('PADDLE_ENVIRONMENT') || 'sandbox') as
+      | 'sandbox'
+      | 'production';
+    this.paddleApiUrl =
+      this.paddleEnvironment === 'production'
+        ? 'https://api.paddle.com'
+        : 'https://sandbox-api.paddle.com';
   }
 
   async createPaymentIntent(orderId: string, tenantId: string): Promise<PaymentIntent> {
@@ -64,17 +58,19 @@ export class PaymentService {
       const response = await fetch(`${this.paddleApiUrl}/transactions`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.paddleApiKey}`,
+          Authorization: `Bearer ${this.paddleApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          items: [{
-            price: {
-              amount: Math.round(Number(order.total) * 100).toString(), // Paddle uses string amounts
-              currency: 'USD',
+          items: [
+            {
+              price: {
+                amount: Math.round(Number(order.total) * 100).toString(), // Paddle uses string amounts
+                currency: 'USD',
+              },
+              quantity: 1,
             },
-            quantity: 1,
-          }],
+          ],
           custom_data: {
             orderId: order.id,
             tenantId,
@@ -148,7 +144,7 @@ export class PaymentService {
     }
 
     const webhookSecret = this.config.get('PADDLE_WEBHOOK_SECRET');
-    
+
     if (!webhookSecret || webhookSecret.includes('...')) {
       console.warn('Webhook secret not configured');
       return;
@@ -156,7 +152,6 @@ export class PaymentService {
 
     // Verify Paddle webhook signature
     try {
-      const crypto = require('crypto');
       const hmac = crypto.createHmac('sha256', webhookSecret);
       hmac.update(JSON.stringify(payload));
       const calculatedSignature = hmac.digest('hex');

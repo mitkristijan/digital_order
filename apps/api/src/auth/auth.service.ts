@@ -19,7 +19,7 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
-    private redis: RedisService,
+    private redis: RedisService
   ) {}
 
   async register(dto: RegisterRequest): Promise<LoginResponse> {
@@ -107,9 +107,23 @@ export class AuthService {
           trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
           settings: {
             theme: { primaryColor: '#4F46E5', logo: null, favicon: null },
-            features: { tableOrdering: true, deliveryOrdering: false, takeawayOrdering: true, reservations: false, inventory: false, loyaltyProgram: false },
+            features: {
+              tableOrdering: true,
+              deliveryOrdering: false,
+              takeawayOrdering: true,
+              reservations: false,
+              inventory: false,
+              loyaltyProgram: false,
+            },
             limits: { maxMenuItems: 50, maxTables: 10, maxStaff: 5, maxOrders: 100 },
-            business: { address: '', phone: '', email: dto.email || '', taxId: null, currency: 'USD', timezone: 'America/New_York' },
+            business: {
+              address: '',
+              phone: '',
+              email: dto.email || '',
+              taxId: null,
+              currency: 'USD',
+              timezone: 'America/New_York',
+            },
           },
         },
       });
@@ -156,14 +170,14 @@ export class AuthService {
       throw new UnauthorizedException('User account is disabled');
     }
 
-    const { passwordHash, ...result } = user;
+    const { passwordHash: _passwordHash, ...result } = user;
     return result;
   }
 
   async sendOTP(dto: OTPRequest): Promise<{ success: boolean }> {
     // Generate 6-digit OTP
     const code = Math.floor(100000 + Math.random() * 900000).toString();
-    
+
     // Find or create user
     let user = await this.prisma.user.findUnique({
       where: { phone: dto.phone },
@@ -227,7 +241,7 @@ export class AuthService {
 
   async refreshToken(refreshToken: string): Promise<LoginResponse> {
     try {
-      const payload = this.jwtService.verify(refreshToken, {
+      const _payload = this.jwtService.verify(refreshToken, {
         secret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret',
       });
 
@@ -259,7 +273,7 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('User not found');
     }
-    const { passwordHash, ...userWithoutPassword } = user;
+    const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
 
     let subdomain: string | null = null;
     let menuSlug: string | null = null;
@@ -326,7 +340,7 @@ export class AuthService {
       },
     });
 
-    const { passwordHash, ...result } = updated;
+    const { passwordHash: _passwordHash, ...result } = updated;
     return result;
   }
 
@@ -408,7 +422,7 @@ export class AuthService {
       data: { lastLoginAt: new Date() },
     });
 
-    const { passwordHash, ...userWithoutPassword } = user;
+    const { passwordHash: _passwordHash, ...userWithoutPassword } = user;
     const userResponse = {
       ...userWithoutPassword,
       tenantId: tenantId || undefined,

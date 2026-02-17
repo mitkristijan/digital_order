@@ -101,14 +101,16 @@ export default function AnalyticsPage() {
                 <div className="rounded-xl px-5 py-5 bg-gradient-to-br from-indigo-50 to-indigo-100/60 border border-indigo-100/80 shadow-card">
                   <p className="text-xs text-indigo-700/80 uppercase tracking-wider font-medium">Average Order Value</p>
                   <p className="text-3xl font-bold text-indigo-700 mt-1">
-                    ${dashboard?.averageOrderValue != null ? Number(dashboard.averageOrderValue).toFixed(2) : '0.00'}
+                    {dashboard?.averageOrderValue != null && dashboard.averageOrderValue > 0
+                      ? `$${Number(dashboard.averageOrderValue).toFixed(2)}`
+                      : 'N/A'}
                   </p>
                 </div>
 
                 <div className="rounded-xl px-5 py-5 bg-gradient-to-br from-amber-50 to-amber-100/60 border border-amber-100/80 shadow-card">
-                  <p className="text-xs text-amber-700/80 uppercase tracking-wider font-medium">Peak Hour</p>
+                  <p className="text-xs text-amber-700/80 uppercase tracking-wider font-medium">Peak Hour (7 Days)</p>
                   <p className="text-3xl font-bold text-amber-700 mt-1">
-                    {dashboard?.peakHour !== undefined ? `${dashboard.peakHour}:00` : 'N/A'}
+                    {dashboard?.peakHour != null ? `${dashboard.peakHour}:00` : 'N/A'}
                   </p>
                 </div>
               </div>

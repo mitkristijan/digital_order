@@ -7,7 +7,7 @@ import { RedisService } from '../redis/redis.service';
 export class AnalyticsService {
   constructor(
     private prisma: PrismaService,
-    private redis: RedisService,
+    private redis: RedisService
   ) {}
 
   async getDashboardMetrics(tenantId: string, startDate?: Date, endDate?: Date) {
@@ -38,7 +38,16 @@ export class AnalyticsService {
         { status: OrderStatus.DELIVERED, deliveredAt: { gte: yesterdayStart, lte: yesterdayEnd } },
       ],
     };
-    const completedStatuses: OrderStatus[] = [OrderStatus.DELIVERED, OrderStatus.COMPLETED, OrderStatus.READY];
+
+    const last7DaysStart = new Date(todayStart);
+    last7DaysStart.setDate(last7DaysStart.getDate() - 7);
+    const soldLast7DaysWhere = {
+      tenantId,
+      OR: [
+        { status: OrderStatus.COMPLETED, completedAt: { gte: last7DaysStart, lte: end } },
+        { status: OrderStatus.DELIVERED, deliveredAt: { gte: last7DaysStart, lte: end } },
+      ],
+    };
 
     const [
       totalOrders,
@@ -46,9 +55,10 @@ export class AnalyticsService {
       completedOrders,
       cancelledOrders,
       avgOrderValue,
+      avgOrderValueLast7Days,
       yesterdayOrders,
       yesterdayRevenue,
-      todayOrdersForPeak,
+      ordersLast7DaysForPeak,
       itemsSoldResult,
     ] = await Promise.all([
       this.prisma.order.count({
@@ -72,6 +82,10 @@ export class AnalyticsService {
         where: soldTodayWhere,
         _avg: { total: true },
       }),
+      this.prisma.order.aggregate({
+        where: soldLast7DaysWhere,
+        _avg: { total: true },
+      }),
       this.prisma.order.count({
         where: soldYesterdayWhere,
       }),
@@ -80,7 +94,10 @@ export class AnalyticsService {
         _sum: { total: true },
       }),
       this.prisma.order.findMany({
-        where: { tenantId, orderedAt: { gte: todayStart, lte: todayEnd } },
+        where: {
+          tenantId,
+          orderedAt: { gte: last7DaysStart, lte: todayEnd },
+        },
         select: { orderedAt: true },
       }),
       this.prisma.orderItem.aggregate({
@@ -92,20 +109,32 @@ export class AnalyticsService {
     ]);
 
     const revenue = Number(totalRevenue._sum.total || 0);
-    const avgValue = Number(avgOrderValue._avg.total || 0);
+    const avgToday = avgOrderValue._avg.total != null ? Number(avgOrderValue._avg.total) : null;
+    const avgLast7 =
+      avgOrderValueLast7Days._avg.total != null ? Number(avgOrderValueLast7Days._avg.total) : null;
+    const avgValue = avgToday ?? avgLast7 ?? 0;
     const yesterdayRev = Number(yesterdayRevenue._sum.total || 0);
 
     const ordersChangePercent =
-      yesterdayOrders > 0 ? ((totalOrders - yesterdayOrders) / yesterdayOrders) * 100 : (totalOrders > 0 ? 100 : 0);
+      yesterdayOrders > 0
+        ? ((totalOrders - yesterdayOrders) / yesterdayOrders) * 100
+        : totalOrders > 0
+          ? 100
+          : 0;
     const revenueChangePercent =
-      yesterdayRev > 0 ? ((revenue - yesterdayRev) / yesterdayRev) * 100 : (revenue > 0 ? 100 : 0);
+      yesterdayRev > 0 ? ((revenue - yesterdayRev) / yesterdayRev) * 100 : revenue > 0 ? 100 : 0;
 
     const ordersByHour: { [hour: number]: number } = {};
     for (let i = 0; i < 24; i++) ordersByHour[i] = 0;
-    todayOrdersForPeak.forEach((o) => {
+    ordersLast7DaysForPeak.forEach(o => {
       ordersByHour[o.orderedAt.getHours()]++;
     });
-    const peakHour = Object.entries(ordersByHour).reduce((a, b) => (b[1] > a[1] ? [parseInt(b[0]), b[1]] : a), [0, 0])[0];
+    const totalOrdersForPeak = ordersLast7DaysForPeak.length;
+    const peakHourEntry = Object.entries(ordersByHour).reduce(
+      (a, b) => (b[1] > a[1] ? [parseInt(b[0]), b[1]] : a),
+      [0, 0]
+    );
+    const peakHour = totalOrdersForPeak > 0 ? peakHourEntry[0] : null;
 
     const itemsSold = Number(itemsSoldResult._sum.quantity || 0);
 
@@ -132,7 +161,14 @@ export class AnalyticsService {
         order: {
           tenantId,
           orderedAt: { gte: start, lte: end },
-          status: { in: ['DELIVERED', 'READY', 'PREPARING'] },
+          status: {
+            in: [
+              OrderStatus.DELIVERED,
+              OrderStatus.READY,
+              OrderStatus.PREPARING,
+              OrderStatus.COMPLETED,
+            ],
+          },
         },
       },
       select: {
@@ -168,7 +204,7 @@ export class AnalyticsService {
     return Array.from(aggregated.values())
       .sort((a, b) => b.totalQuantity - a.totalQuantity)
       .slice(0, limit)
-      .map((item) => ({
+      .map(item => ({
         name: item.name,
         orderCount: item.orderCount,
         revenue: item.revenue,
@@ -179,16 +215,22 @@ export class AnalyticsService {
     const endDate = new Date();
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - days);
+    startDate.setHours(0, 0, 0, 0);
 
-    const orders = await this.prisma.order.findMany({
+    // Revenue = orders that were completed or delivered (same logic as dashboard)
+    const completedOrders = await this.prisma.order.findMany({
       where: {
         tenantId,
-        orderedAt: { gte: startDate, lte: endDate },
-        status: { in: ['DELIVERED', 'READY'] },
+        OR: [
+          { status: OrderStatus.COMPLETED, completedAt: { gte: startDate, lte: endDate } },
+          { status: OrderStatus.DELIVERED, deliveredAt: { gte: startDate, lte: endDate } },
+        ],
       },
       select: {
-        orderedAt: true,
         total: true,
+        status: true,
+        completedAt: true,
+        deliveredAt: true,
       },
     });
 
@@ -199,10 +241,14 @@ export class AnalyticsService {
       revenueByDay[date.toISOString().split('T')[0]] = 0;
     }
 
-    orders.forEach((order) => {
-      const date = order.orderedAt.toISOString().split('T')[0];
-      if (revenueByDay[date] !== undefined) {
-        revenueByDay[date] += Number(order.total);
+    completedOrders.forEach(order => {
+      const completionDate =
+        order.status === OrderStatus.COMPLETED ? order.completedAt : order.deliveredAt;
+      if (completionDate) {
+        const date = completionDate.toISOString().split('T')[0];
+        if (revenueByDay[date] !== undefined) {
+          revenueByDay[date] += Number(order.total);
+        }
       }
     });
 
@@ -272,16 +318,18 @@ export class AnalyticsService {
       this.prisma.user.count({
         where: { role: 'CUSTOMER' },
       }),
-      this.prisma.order.groupBy({
-        by: ['customerId'],
-        where: {
-          tenantId,
-          customerId: { not: null },
-        },
-        having: {
-          customerId: { _count: { gt: 1 } },
-        },
-      }).then(res => res.length),
+      this.prisma.order
+        .groupBy({
+          by: ['customerId'],
+          where: {
+            tenantId,
+            customerId: { not: null },
+          },
+          having: {
+            customerId: { _count: { gt: 1 } },
+          },
+        })
+        .then(res => res.length),
       this.prisma.user.count({
         where: {
           role: 'CUSTOMER',
@@ -300,7 +348,9 @@ export class AnalyticsService {
   }
 
   private async resolveTenantId(tenantIdOrSubdomain: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tenantIdOrSubdomain);
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      tenantIdOrSubdomain
+    );
     if (isUuid) return tenantIdOrSubdomain;
     const tenant = await this.prisma.tenant.findUnique({
       where: { subdomain: tenantIdOrSubdomain },
@@ -324,7 +374,7 @@ export class AnalyticsService {
     tenantIdOrSubdomain: string,
     period: 'day' | 'week' | 'month' | 'year' | 'all',
     skip?: number,
-    take?: number,
+    take?: number
   ) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     const now = new Date();
