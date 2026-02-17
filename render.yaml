@@ -17,8 +17,9 @@ services:
       cd apps/api && npx prisma generate && npm run build
 
     # Migrations run automatically on every deploy before app starts
+    # Ensure scripts add missing columns/tables if migrations were skipped (idempotent)
     startCommand: |
-      cd apps/api && npx prisma migrate deploy && (npx prisma db execute --file prisma/ensure-menu-item-suggested-item.sql 2>/dev/null || true) && node dist/apps/api/src/main.js
+      cd apps/api && npx prisma migrate deploy && (npx prisma db execute --file prisma/ensure-menu-item-image-urls.sql 2>/dev/null || true) && (npx prisma db execute --file prisma/ensure-menu-item-suggested-item.sql 2>/dev/null || true) && node dist/apps/api/src/main.js
 
     # Render free tier - spins down after 15 min inactivity
     plan: free
