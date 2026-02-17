@@ -557,8 +557,11 @@ export class MenuService {
       }
     }
 
+    // Filter out categories with no items (customer should not see empty categories)
+    const menuWithItems = menu.filter((cat) => cat.menuItems.length > 0);
+
     // Convert Decimal types to numbers before caching
-    const serializedMenu = menu.map((cat) => ({
+    const serializedMenu = menuWithItems.map((cat) => ({
       ...cat,
       menuItems: cat.menuItems.map((item) =>
         this.serializeMenuItem(item),
