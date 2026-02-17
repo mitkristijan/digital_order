@@ -165,7 +165,16 @@ export class OrderService {
           include: {
             items: {
               include: {
-                menuItem: true,
+                menuItem: {
+                  select: {
+                    id: true,
+                    name: true,
+                    description: true,
+                    basePrice: true,
+                    imageUrl: true,
+                    active: true,
+                  },
+                },
                 variant: true,
               },
             },
@@ -203,7 +212,16 @@ export class OrderService {
       include: {
         items: {
           include: {
-            menuItem: true,
+            menuItem: {
+              select: {
+                id: true,
+                name: true,
+                description: true,
+                basePrice: true,
+                imageUrl: true,
+                active: true,
+              },
+            },
             variant: true,
           },
         },
@@ -254,7 +272,16 @@ export class OrderService {
         include: {
           items: {
             include: {
-              menuItem: true,
+              menuItem: {
+                select: {
+                  id: true,
+                  name: true,
+                  description: true,
+                  basePrice: true,
+                  imageUrl: true,
+                  active: true,
+                },
+              },
             },
           },
         },
