@@ -556,7 +556,22 @@ export class MenuService {
       return JSON.parse(cached);
     }
 
-    const baseMenuItemsInclude = {
+    // Use select (not include) to avoid fetching imageUrls - column may not exist in prod DB
+    const menuItemSelect = {
+      id: true,
+      tenantId: true,
+      categoryId: true,
+      name: true,
+      description: true,
+      basePrice: true,
+      prepTime: true,
+      availability: true,
+      allergens: true,
+      dietaryTags: true,
+      imageUrl: true,
+      active: true,
+      createdAt: true,
+      updatedAt: true,
       variants: { where: { active: true } },
       modifierGroups: {
         include: {
@@ -568,8 +583,8 @@ export class MenuService {
         },
       },
     };
-    const fullMenuItemsInclude = {
-      ...baseMenuItemsInclude,
+    const menuItemSelectWithSuggested = {
+      ...menuItemSelect,
       suggestedItems: {
         include: {
           suggestedItem: {
@@ -587,7 +602,7 @@ export class MenuService {
         include: {
           menuItems: {
             where: { active: true, availability: true },
-            include: fullMenuItemsInclude,
+            select: menuItemSelectWithSuggested,
           },
         },
       });
@@ -605,7 +620,7 @@ export class MenuService {
           include: {
             menuItems: {
               where: { active: true, availability: true },
-              include: baseMenuItemsInclude,
+              select: menuItemSelect,
             },
           },
         });
