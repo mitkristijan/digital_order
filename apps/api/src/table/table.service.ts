@@ -37,7 +37,14 @@ export class TableService {
 
   private async generateQrDataUrl(tenantId: string, tableNumber: string): Promise<string> {
     const slug = await this.getTenantSlugForUrl(tenantId);
-    const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
+    const baseUrl =
+      process.env.FRONTEND_URL ||
+      (process.env.NODE_ENV === 'production' ? null : 'http://localhost:3001');
+    if (!baseUrl) {
+      throw new Error(
+        'FRONTEND_URL must be set in production for QR code generation. Set it to your customer app URL (e.g. https://order.yourdomain.com).'
+      );
+    }
     const qrData = `${baseUrl.replace(/\/$/, '')}/${slug}/${tableNumber}/menu`;
     return QRCode.toDataURL(qrData);
   }
