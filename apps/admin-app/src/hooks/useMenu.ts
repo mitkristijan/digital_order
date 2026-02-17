@@ -3,6 +3,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../lib/apiClient';
 
+export function useMenuItem(tenantId: string | null, itemId: string | null) {
+  return useQuery({
+    queryKey: ['menuItem', tenantId, itemId],
+    queryFn: async ({ signal }) => {
+      if (!tenantId || !itemId) throw new Error('tenantId and itemId required');
+      const { data } = await apiClient.get(`/menu/items/${itemId}?tenantId=${tenantId}`, {
+        signal,
+        timeout: 120_000,
+      });
+      return data;
+    },
+    enabled: !!tenantId && !!itemId,
+    staleTime: 60_000,
+  });
+}
+
 export function useMenuItems(tenantId: string | null) {
   return useQuery({
     queryKey: ['menuItems', tenantId],

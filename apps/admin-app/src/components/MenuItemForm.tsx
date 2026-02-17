@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, Input, Textarea, Button } from '@digital-order/ui';
-import { useCategories, useCreateCategory, useCreateMenuItem, useUpdateMenuItem, useMenuItems } from '@/hooks/useMenu';
-import { ImageUpload } from './ImageUpload';
+import { useCategories, useCreateCategory, useCreateMenuItem, useUpdateMenuItem, useMenuItems, useMenuItem } from '@/hooks/useMenu';
+import { MultiImageUpload } from './MultiImageUpload';
 
 interface MenuItem {
   id?: string;
@@ -15,6 +15,7 @@ interface MenuItem {
   allergens: string[];
   dietaryTags: string[];
   imageUrl?: string | null;
+  imageUrls?: string[];
   suggestedItems?: { suggestedItem: { id: string; name: string } }[];
 }
 
@@ -35,6 +36,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
 }) => {
   const { data: categories } = useCategories(tenantId);
   const { data: menuItems } = useMenuItems(tenantId);
+  const { data: fetchedItem } = useMenuItem(tenantId, item?.id ?? null);
   const createMutation = useCreateMenuItem(tenantId);
   const updateMutation = useUpdateMenuItem(tenantId);
   const createCategoryMutation = useCreateCategory(tenantId);
@@ -50,6 +52,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
     allergens: [],
     dietaryTags: [],
     imageUrl: '',
+    imageUrls: [],
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -63,13 +66,22 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
   const [relatedItemsSearch, setRelatedItemsSearch] = useState('');
   const [selectedSuggestedItemIds, setSelectedSuggestedItemIds] = useState<string[]>([]);
 
+  // Use fetched item when editing (has full suggestedItems); fall back to passed item
+  const itemToUse = item?.id ? (fetchedItem ?? item) : item;
+
   useEffect(() => {
-    if (item) {
+    if (itemToUse) {
+      const imageUrls = Array.isArray((itemToUse as any).imageUrls) && (itemToUse as any).imageUrls.length > 0
+        ? (itemToUse as any).imageUrls
+        : (itemToUse as any).imageUrl
+          ? [(itemToUse as any).imageUrl]
+          : [];
       setFormData({
-        ...item,
-        basePrice: typeof item.basePrice === 'number' ? item.basePrice : Number(item.basePrice),
+        ...itemToUse,
+        basePrice: typeof itemToUse.basePrice === 'number' ? itemToUse.basePrice : Number(itemToUse.basePrice),
+        imageUrls,
       });
-      setSelectedDietaryTags(item.dietaryTags || []);
+      setSelectedDietaryTags(itemToUse.dietaryTags || []);
     } else {
       setFormData({
         name: '',
@@ -80,6 +92,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
         allergens: [],
         dietaryTags: [],
         imageUrl: '',
+        imageUrls: [],
       });
       setSelectedDietaryTags([]);
     }
@@ -88,12 +101,13 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
     setCategoryDropdownOpen(false);
     setRelatedItemsDropdownOpen(false);
     setRelatedItemsSearch('');
-    setSelectedSuggestedItemIds(
-      item?.suggestedItems?.map((s: any) => s.suggestedItem?.id).filter(Boolean) ?? []
-    );
+    // Extract related item IDs - support both suggestedItem.id and suggestedItemId
+    const ids =
+      itemToUse?.suggestedItems?.map((s: any) => s.suggestedItem?.id ?? s.suggestedItemId).filter(Boolean) ?? [];
+    setSelectedSuggestedItemIds(ids);
     setSubmitError(null);
     setErrors({});
-  }, [item, categories, open]);
+  }, [itemToUse, categories, open]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -146,6 +160,7 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
       ...cleanData,
       dietaryTags: selectedDietaryTags,
       suggestedItemIds: selectedSuggestedItemIds,
+      imageUrls: formData.imageUrls?.length ? formData.imageUrls : [],
     };
 
     console.log('Submitting data:', submitData);
@@ -463,10 +478,11 @@ export const MenuItemForm: React.FC<MenuItemFormProps> = ({
             />
           </div>
 
-          <ImageUpload
-            label="Item Image"
-            value={formData.imageUrl}
-            onChange={(url) => setFormData({ ...formData, imageUrl: url })}
+          <MultiImageUpload
+            label="Photos"
+            value={formData.imageUrls ?? []}
+            onChange={(urls) => setFormData({ ...formData, imageUrls: urls })}
+            maxImages={10}
           />
 
           {/* Dietary Tags */}

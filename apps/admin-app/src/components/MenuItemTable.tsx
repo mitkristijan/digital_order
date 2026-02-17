@@ -63,19 +63,25 @@ export const MenuItemTable: React.FC<MenuItemTableProps> = ({ items, tenantId, v
             className="group bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden border border-slate-200 hover:border-slate-300"
           >
             <div className="relative h-48 bg-gradient-to-br from-slate-100 to-slate-200 overflow-hidden">
-              {item.imageUrl ? (
+              {(() => {
+                const primaryImg =
+                  Array.isArray((item as any).imageUrls) && (item as any).imageUrls.length > 0
+                    ? (item as any).imageUrls[0]
+                    : item.imageUrl;
+                return primaryImg ? (
                 <img
-                  src={item.imageUrl}
+                  src={primaryImg}
                   alt={item.name}
                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
-              ) : (
+                ) : (
                 <div className="flex items-center justify-center h-full">
                   <svg className="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                 </div>
-              )}
+              );
+              })()}
               <div className="absolute top-3 right-3">
                 <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                   item.availability
@@ -191,19 +197,25 @@ export const MenuItemTable: React.FC<MenuItemTableProps> = ({ items, tenantId, v
                 <td className="px-6 py-5">
                   <div className="flex items-center gap-4">
                     <div className="relative">
-                      {item.imageUrl ? (
+                      {(() => {
+                        const primaryImg =
+                          Array.isArray((item as any).imageUrls) && (item as any).imageUrls.length > 0
+                            ? (item as any).imageUrls[0]
+                            : item.imageUrl;
+                        return primaryImg ? (
                         <img
-                          src={item.imageUrl}
+                          src={primaryImg}
                           alt={item.name}
                           className="w-16 h-16 object-cover rounded-lg border-2 border-slate-200 group-hover:border-blue-300 transition-colors"
                         />
-                      ) : (
+                        ) : (
                         <div className="w-16 h-16 bg-gradient-to-br from-slate-100 to-slate-200 rounded-lg flex items-center justify-center border-2 border-slate-200 group-hover:border-blue-300 transition-colors">
                           <svg className="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
                         </div>
-                      )}
+                      );
+                      })()}
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-slate-900 text-base group-hover:text-blue-600 transition-colors">

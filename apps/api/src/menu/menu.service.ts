@@ -124,11 +124,16 @@ export class MenuService {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
     const { variants, suggestedItemIds, ...itemData } = data;
 
+    // Keep imageUrl in sync with imageUrls[0] for backward compatibility
+    const createData = { ...itemData, tenantId };
+    if (createData.imageUrls && Array.isArray(createData.imageUrls) && createData.imageUrls.length > 0) {
+      createData.imageUrl = createData.imageUrls[0];
+    }
+
     // Create menu item first without suggestedItems (resilient when MenuItemSuggestedItem table is missing)
     const menuItem = await this.prisma.menuItem.create({
       data: {
-        ...itemData,
-        tenantId,
+        ...createData,
         variants: variants
           ? {
               create: variants,
@@ -308,13 +313,20 @@ export class MenuService {
 
       // Only pass fields that Prisma accepts for MenuItem update
       const updateData: Record<string, any> = {};
-      const allowedFields = ['name', 'description', 'basePrice', 'categoryId', 'prepTime', 'availability', 'allergens', 'dietaryTags', 'imageUrl'];
+      const allowedFields = ['name', 'description', 'basePrice', 'categoryId', 'prepTime', 'availability', 'allergens', 'dietaryTags', 'imageUrl', 'imageUrls'];
       for (const key of allowedFields) {
         if (rest[key] !== undefined) updateData[key] = rest[key];
       }
       // Normalize imageUrl: empty string or null -> null (clearing/removing photo)
       if ('imageUrl' in updateData && (updateData.imageUrl === '' || updateData.imageUrl === null)) {
         updateData.imageUrl = null;
+      }
+      // Keep imageUrl in sync with imageUrls[0] for backward compatibility
+      if (updateData.imageUrls !== undefined) {
+        updateData.imageUrl =
+          Array.isArray(updateData.imageUrls) && updateData.imageUrls.length > 0
+            ? updateData.imageUrls[0]
+            : null;
       }
 
       // Sync suggested items if provided (resilient when table has constraints)
@@ -607,6 +619,13 @@ export class MenuService {
           },
         }));
     }
+    // Normalize imageUrls: always return array; merge legacy imageUrl for backward compat
+    const imageUrls = Array.isArray(item.imageUrls) && item.imageUrls.length > 0
+      ? item.imageUrls
+      : item.imageUrl
+        ? [item.imageUrl]
+        : [];
+    base.imageUrls = imageUrls;
     return base;
   }
 

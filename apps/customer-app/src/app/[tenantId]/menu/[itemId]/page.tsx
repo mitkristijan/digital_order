@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useMenu, useMenuItem } from '@/hooks/useMenu';
@@ -22,6 +22,7 @@ export default function MenuItemDetailsPage() {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (tenantId) {
@@ -39,6 +40,32 @@ export default function MenuItemDetailsPage() {
     const category = menu.find((c) => c.id === item.categoryId);
     return (category?.menuItems ?? []).filter((i) => i.id !== item.id).slice(0, 4);
   }, [menu, item]);
+
+  // Images for carousel (computed before early returns for hook consistency)
+  const images = useMemo(() => {
+    if (!item) return [];
+    return Array.isArray((item as any).imageUrls) && (item as any).imageUrls.length > 0
+      ? (item as any).imageUrls
+      : item.imageUrl
+        ? [item.imageUrl]
+        : [];
+  }, [item]);
+
+  // Sync dot indicator with scroll position (must be before early returns - Rules of Hooks)
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el || images.length <= 1) return;
+
+    const handleScroll = () => {
+      const scrollLeft = el.scrollLeft;
+      const slideWidth = el.offsetWidth;
+      const index = Math.round(scrollLeft / slideWidth);
+      setCurrentImageIndex(Math.min(index, images.length - 1));
+    };
+
+    el.addEventListener('scroll', handleScroll, { passive: true });
+    return () => el.removeEventListener('scroll', handleScroll);
+  }, [images.length]);
 
   if (isLoading) {
     return (
@@ -63,15 +90,23 @@ export default function MenuItemDetailsPage() {
     );
   }
 
-  const images = item.imageUrl ? [item.imageUrl] : [];
+  const scrollToIndex = (index: number) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    el.scrollTo({ left: index * el.offsetWidth, behavior: 'smooth' });
+  };
 
   const handleAddToCart = () => {
+    const primaryImage =
+      Array.isArray((item as any).imageUrls) && (item as any).imageUrls.length > 0
+        ? (item as any).imageUrls[0]
+        : item.imageUrl;
     addItem({
       menuItemId: item.id,
       name: item.name,
       basePrice: item.basePrice,
       quantity: 1,
-      imageUrl: item.imageUrl,
+      imageUrl: primaryImage ?? undefined,
     });
   };
 
@@ -124,25 +159,44 @@ export default function MenuItemDetailsPage() {
         </div>
       </div>
 
-      {/* Image carousel */}
-      <div className="relative z-10 w-full aspect-[4/3] bg-stone-100 flex-shrink-0">
+      {/* Image carousel - swipeable */}
+      <div className="relative z-10 w-full aspect-[4/3] bg-stone-100 flex-shrink-0 overflow-hidden">
         {images.length > 0 ? (
           <>
-            <img
-              src={images[currentImageIndex]}
-              alt={item.name}
-              className="w-full h-full object-cover"
-            />
+            <div
+              ref={carouselRef}
+              className="h-full w-full flex overflow-x-auto overflow-y-hidden snap-x snap-mandatory scroll-smooth touch-pan-x scrollbar-hide"
+              style={{ WebkitOverflowScrolling: 'touch' }}
+              role="region"
+              aria-label="Menu item photos"
+            >
+              {images.map((src, i) => (
+                <div
+                  key={i}
+                  className="flex-shrink-0 w-full h-full snap-center"
+                  style={{ minWidth: '100%' }}
+                >
+                  <img
+                    src={src}
+                    alt={`${item.name} - photo ${i + 1}`}
+                    className="w-full h-full object-cover select-none"
+                    draggable={false}
+                    loading={i === 0 ? 'eager' : 'lazy'}
+                  />
+                </div>
+              ))}
+            </div>
             {images.length > 1 && (
-              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+              <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5 z-10">
                 {images.map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setCurrentImageIndex(i)}
-                    className={`w-2 h-2 rounded-full transition-colors ${
-                      i === currentImageIndex ? 'bg-white' : 'bg-white/50'
+                    onClick={() => scrollToIndex(i)}
+                    className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                      i === currentImageIndex ? 'bg-white scale-125' : 'bg-white/50 hover:bg-white/70'
                     }`}
                     aria-label={`View image ${i + 1}`}
+                    aria-current={i === currentImageIndex ? 'true' : undefined}
                   />
                 ))}
               </div>
