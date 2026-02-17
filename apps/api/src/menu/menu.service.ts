@@ -529,14 +529,16 @@ export class MenuService {
   // ========== UTILITIES ==========
 
   private async resolveTenantId(tenantIdOrSubdomain: string): Promise<string> {
-    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
-      tenantIdOrSubdomain
-    );
+    if (!tenantIdOrSubdomain || typeof tenantIdOrSubdomain !== 'string') {
+      throw new NotFoundException('Tenant not found');
+    }
+    const trimmed = tenantIdOrSubdomain.trim();
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
     if (isUuid) {
-      return tenantIdOrSubdomain;
+      return trimmed;
     }
     const tenant = await this.prisma.tenant.findFirst({
-      where: { OR: [{ subdomain: tenantIdOrSubdomain }, { menuSlug: tenantIdOrSubdomain }] },
+      where: { OR: [{ subdomain: trimmed }, { menuSlug: trimmed }] },
       select: { id: true },
     });
     if (!tenant) {
@@ -590,10 +592,13 @@ export class MenuService {
         },
       });
     } catch (err: any) {
-      if (
+      // Fallback when MenuItemSuggestedItem table doesn't exist (P2021) or relation error
+      const isSuggestedItemsError =
         err?.message?.includes('MenuItemSuggestedItem') ||
-        err?.message?.includes('does not exist')
-      ) {
+        err?.message?.includes('does not exist') ||
+        err?.code === 'P2021' ||
+        err?.meta?.table === 'MenuItemSuggestedItem';
+      if (isSuggestedItemsError) {
         menu = await this.prisma.category.findMany({
           where: { tenantId, active: true },
           orderBy: { sortOrder: 'asc' },

@@ -26,6 +26,10 @@ export class HttpExceptionFilter implements ExceptionFilter {
       if (exception.code === 'P2025') {
         status = HttpStatus.NOT_FOUND;
       }
+      // P2021 = Table does not exist (schema mismatch) - return 500 but with clear message
+      else if (exception.code === 'P2021') {
+        status = HttpStatus.INTERNAL_SERVER_ERROR;
+      }
       // P2003 = Foreign key constraint failed
       else if (exception.code === 'P2003') {
         status = HttpStatus.BAD_REQUEST;

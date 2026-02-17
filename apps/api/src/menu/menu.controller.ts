@@ -9,6 +9,7 @@ import {
   Query,
   UseGuards,
   Patch,
+  BadRequestException,
 } from '@nestjs/common';
 import { MenuService } from './menu.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -186,6 +187,9 @@ export class MenuController {
   @Public()
   @ApiOperation({ summary: 'Get complete menu with categories, items, variants, and modifiers' })
   async getFullMenu(@Query('tenantId') tenantId: string) {
-    return this.menuService.getFullMenu(tenantId);
+    if (!tenantId || typeof tenantId !== 'string' || !tenantId.trim()) {
+      throw new BadRequestException('tenantId query parameter is required');
+    }
+    return this.menuService.getFullMenu(tenantId.trim());
   }
 }
