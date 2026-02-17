@@ -289,6 +289,7 @@ export class OrderService {
         where: { id: item.menuItemId, tenantId, active: true },
         select: {
           id: true,
+          name: true,
           basePrice: true,
           variants: true,
         },
