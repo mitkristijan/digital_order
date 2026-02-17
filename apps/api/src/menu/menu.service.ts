@@ -196,12 +196,27 @@ export class MenuService {
     (globalThis as any).currentTenantId = undefined;
 
     try {
-      const baseInclude = {
+      // Use select (not include) to avoid fetching imageUrls - column may not exist in prod DB
+      const menuItemSelect = {
+        id: true,
+        tenantId: true,
+        categoryId: true,
+        name: true,
+        description: true,
+        basePrice: true,
+        prepTime: true,
+        availability: true,
+        allergens: true,
+        dietaryTags: true,
+        imageUrl: true,
+        active: true,
+        createdAt: true,
+        updatedAt: true,
         category: true,
         variants: { where: { active: true } },
       };
-      const fullInclude = {
-        ...baseInclude,
+      const menuItemSelectWithSuggested = {
+        ...menuItemSelect,
         suggestedItems: {
           include: {
             suggestedItem: {
@@ -219,21 +234,23 @@ export class MenuService {
             active: true,
             ...(categoryId && { categoryId }),
           },
-          include: fullInclude,
+          select: menuItemSelectWithSuggested,
           orderBy: { createdAt: 'desc' },
         });
       } catch (err: any) {
-        if (
+        const isSuggestedItemsError =
           err?.message?.includes('MenuItemSuggestedItem') ||
-          err?.message?.includes('does not exist')
-        ) {
+          err?.message?.includes('does not exist') ||
+          err?.code === 'P2021' ||
+          err?.meta?.table === 'MenuItemSuggestedItem';
+        if (isSuggestedItemsError) {
           menuItems = await this.prisma.menuItem.findMany({
             where: {
               tenantId,
               active: true,
               ...(categoryId && { categoryId }),
             },
-            include: baseInclude,
+            select: menuItemSelect,
             orderBy: { createdAt: 'desc' },
           });
         } else {
@@ -256,7 +273,22 @@ export class MenuService {
 
   async getMenuItemById(tenantIdOrSubdomain: string, id: string) {
     const tenantId = await this.resolveTenantId(tenantIdOrSubdomain);
-    const baseInclude = {
+    // Use select (not include) to avoid fetching imageUrls - column may not exist in prod DB
+    const baseSelect = {
+      id: true,
+      tenantId: true,
+      categoryId: true,
+      name: true,
+      description: true,
+      basePrice: true,
+      prepTime: true,
+      availability: true,
+      allergens: true,
+      dietaryTags: true,
+      imageUrl: true,
+      active: true,
+      createdAt: true,
+      updatedAt: true,
       category: true,
       variants: { where: { active: true } },
       modifierGroups: {
@@ -269,8 +301,8 @@ export class MenuService {
         },
       },
     };
-    const fullInclude = {
-      ...baseInclude,
+    const fullSelect = {
+      ...baseSelect,
       suggestedItems: {
         include: {
           suggestedItem: {
@@ -284,16 +316,18 @@ export class MenuService {
     try {
       menuItem = await this.prisma.menuItem.findFirst({
         where: { id, tenantId },
-        include: fullInclude,
+        select: fullSelect,
       });
     } catch (err: any) {
-      if (
+      const isSuggestedItemsError =
         err?.message?.includes('MenuItemSuggestedItem') ||
-        err?.message?.includes('does not exist')
-      ) {
+        err?.message?.includes('does not exist') ||
+        err?.code === 'P2021' ||
+        err?.meta?.table === 'MenuItemSuggestedItem';
+      if (isSuggestedItemsError) {
         menuItem = await this.prisma.menuItem.findFirst({
           where: { id, tenantId },
-          include: baseInclude,
+          select: baseSelect,
         });
       } else {
         throw err;
@@ -319,6 +353,7 @@ export class MenuService {
       // Verify menu item exists and belongs to tenant before update (prevents 500 from Prisma P2025)
       const existingItem = await this.prisma.menuItem.findFirst({
         where: { id, tenantId },
+        select: { id: true },
       });
       if (!existingItem) {
         throw new NotFoundException('Menu item not found or access denied');
@@ -408,9 +443,10 @@ export class MenuService {
     (globalThis as any).currentTenantId = undefined;
 
     try {
-      // Check if item exists and belongs to tenant
+      // Check if item exists and belongs to tenant (select avoids imageUrls - may not exist in prod DB)
       const item = await this.prisma.menuItem.findFirst({
         where: { id, tenantId },
+        select: { id: true, name: true },
       });
 
       console.log(`🔍 Item found:`, item ? `Yes (${item.name})` : 'No');

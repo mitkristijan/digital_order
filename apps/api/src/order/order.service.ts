@@ -287,7 +287,9 @@ export class OrderService {
     for (const item of items) {
       const menuItem = await this.prisma.menuItem.findFirst({
         where: { id: item.menuItemId, tenantId, active: true },
-        include: {
+        select: {
+          id: true,
+          basePrice: true,
           variants: true,
         },
       });

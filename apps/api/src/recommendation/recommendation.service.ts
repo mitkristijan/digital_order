@@ -28,7 +28,12 @@ export class RecommendationService {
         tenantId,
         availability: true,
       },
-      include: {
+      select: {
+        id: true,
+        categoryId: true,
+        name: true,
+        basePrice: true,
+        imageUrl: true,
         category: true,
         variants: true,
       },
@@ -71,6 +76,12 @@ export class RecommendationService {
             name: { contains: 'Pastries', mode: 'insensitive' },
           },
         },
+        select: {
+          id: true,
+          name: true,
+          basePrice: true,
+          imageUrl: true,
+        },
         take: 2,
         orderBy: { basePrice: 'asc' },
       });
@@ -110,6 +121,12 @@ export class RecommendationService {
       where: {
         id: { in: popularItems.map(p => p.menuItemId) },
         availability: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        basePrice: true,
+        imageUrl: true,
       },
     });
 
