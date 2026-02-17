@@ -1,12 +1,34 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { WebsocketGateway } from '../websocket/websocket.gateway';
 import { CreateOrderRequest, OrderStatus, UpdateOrderStatusRequest } from '@digital-order/types';
 import { generateOrderNumber, calculateSubtotal } from '@digital-order/utils';
 
+/** Recursively convert Prisma Decimal to number for JSON serialization (avoids 500 on response) */
+function serializeDecimals(obj: unknown): unknown {
+  if (obj === null || obj === undefined) return obj;
+  // Prisma Decimal has toNumber() - check for decimal.js-like objects
+  if (typeof obj === 'object' && obj !== null && typeof (obj as { toNumber?: () => number }).toNumber === 'function') {
+    try {
+      return (obj as { toNumber: () => number }).toNumber();
+    } catch {
+      return String(obj);
+    }
+  }
+  if (Array.isArray(obj)) return obj.map(serializeDecimals);
+  if (typeof obj === 'object' && obj !== null) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(obj)) out[k] = serializeDecimals(v);
+    return out;
+  }
+  return obj;
+}
+
 @Injectable()
 export class OrderService {
+  private readonly logger = new Logger(OrderService.name);
+
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
@@ -121,51 +143,58 @@ export class OrderService {
     skip?: number,
     take?: number
   ) {
-    const where: any = { tenantId };
-    if (status) where.status = status;
-    if (orderType) where.orderType = orderType;
+    try {
+      const where: any = { tenantId };
+      if (status) where.status = status;
+      if (orderType) where.orderType = orderType;
 
-    // Convert to numbers and provide defaults (query params come as strings)
-    const actualSkip = skip !== undefined && skip !== null ? Number(skip) : 0;
-    const actualTake = take !== undefined && take !== null ? Number(take) : 20;
+      // Convert to numbers and provide defaults (query params come as strings)
+      const actualSkip = skip !== undefined && skip !== null ? Number(skip) : 0;
+      const actualTake = take !== undefined && take !== null ? Number(take) : 20;
 
-    // Validate they're valid numbers
-    const validSkip = isNaN(actualSkip) ? 0 : actualSkip;
-    const validTake = isNaN(actualTake) ? 20 : actualTake;
+      // Validate they're valid numbers
+      const validSkip = isNaN(actualSkip) ? 0 : actualSkip;
+      const validTake = isNaN(actualTake) ? 20 : actualTake;
 
-    const [orders, total] = await Promise.all([
-      this.prisma.order.findMany({
-        where,
-        skip: validSkip,
-        take: validTake,
-        orderBy: { orderedAt: 'desc' },
-        include: {
-          items: {
-            include: {
-              menuItem: true,
-              variant: true,
+      const [orders, total] = await Promise.all([
+        this.prisma.order.findMany({
+          where,
+          skip: validSkip,
+          take: validTake,
+          orderBy: { orderedAt: 'desc' },
+          include: {
+            items: {
+              include: {
+                menuItem: true,
+                variant: true,
+              },
+            },
+            customer: {
+              select: {
+                id: true,
+                firstName: true,
+                lastName: true,
+                email: true,
+                phone: true,
+              },
             },
           },
-          customer: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-            },
-          },
-        },
-      }),
-      this.prisma.order.count({ where }),
-    ]);
+        }),
+        this.prisma.order.count({ where }),
+      ]);
 
-    return {
-      orders,
-      total,
-      page: Math.floor(validSkip / validTake) + 1,
-      pageSize: validTake,
-    };
+      // Serialize Decimals for JSON response (Prisma Decimal is not JSON-serializable)
+      return serializeDecimals({
+        orders,
+        total,
+        page: Math.floor(validSkip / validTake) + 1,
+        pageSize: validTake,
+      }) as { orders: typeof orders; total: number; page: number; pageSize: number };
+    } catch (err) {
+      this.logger.error(`getOrders failed for tenantId=${tenantId}: ${err instanceof Error ? err.message : String(err)}`);
+      if (err instanceof Error && err.stack) this.logger.debug(err.stack);
+      throw err;
+    }
   }
 
   async getOrderById(tenantId: string, orderId: string) {
